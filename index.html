@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PR Garden</title>
+    <meta name="description" content="An isometric garden where your GitHub pull requests grow as flower beds." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 4 30 12 16 20 2 12Z' fill='%2386c75a'/%3E%3Cpath d='M2 12v6l14 8v-6Z' fill='%23557a3a'/%3E%3Cpath d='M30 12v6l-14 8v-6Z' fill='%236b9447'/%3E%3Ccircle cx='16' cy='10' r='4' fill='%23f49ac1'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="stage"></div>
+
+      <header class="hud">
+        <div class="hud-garden">
+          <h1 id="garden-name">My garden</h1>
+          <div class="hud-meta">
+            <span id="season-label">Spring</span>
+            <span class="dot" aria-hidden="true">·</span>
+            <div class="health" role="meter" aria-label="Garden health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" id="health">
+              <div class="health-fill" id="health-fill"></div>
+            </div>
+            <span id="health-label">100%</span>
+          </div>
+        </div>
+
+        <nav class="tabs" role="tablist" aria-label="Gardens">
+          <button role="tab" id="tab-mine" aria-selected="true" data-garden="mine"><kbd>1</kbd><span>My PRs</span><span class="count" id="count-mine">0</span></button>
+          <button role="tab" id="tab-review" aria-selected="false" data-garden="review"><kbd>2</kbd><span>To review</span><span class="count" id="count-review">0</span></button>
+        </nav>
+
+        <div class="hud-actions">
+          <button class="icon-btn" id="btn-refresh" title="Refresh (R)" aria-label="Refresh data (R)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5" /></svg>
+          </button>
+          <button class="icon-btn" id="btn-list" title="List view (L)" aria-label="List view (L)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01" /></svg>
+          </button>
+          <button class="icon-btn" id="btn-help" title="Controls (?)" aria-label="Show controls (?)">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4.5M12 18h.01" /><circle cx="12" cy="12" r="10" /></svg>
+          </button>
+          <button class="icon-btn" id="btn-settings" title="Settings" aria-label="Settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></svg>
+          </button>
+        </div>
+      </header>
+
+      <div id="status" class="status" role="status" aria-live="polite" hidden></div>
+
+      <footer class="hints" aria-hidden="true">
+        <span><kbd>WASD</kbd> move</span><span><kbd>Shift</kbd> run</span><span><kbd>E</kbd> tend</span><span><kbd>L</kbd> list</span><span><kbd>?</kbd> help</span>
+      </footer>
+
+      <aside id="panel" class="panel" aria-label="Garden details">
+        <button id="panel-toggle" class="panel-toggle" aria-expanded="true" aria-controls="panel-body" title="Collapse panel (\)">
+          <span aria-hidden="true">›</span><span class="sr-only">Toggle side panel</span>
+        </button>
+        <div id="panel-body" class="panel-body">
+          <section id="card" class="card info-card" aria-live="polite"></section>
+          <section class="card care">
+            <h2>Needs care</h2>
+            <ol id="care-list" class="care-list"></ol>
+          </section>
+        </div>
+      </aside>
+
+      <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
+
+      <div id="list-view" class="overlay" role="dialog" aria-modal="true" aria-labelledby="list-title" hidden>
+        <div class="overlay-card wide">
+          <div class="overlay-head">
+            <h2 id="list-title">All beds</h2>
+            <button class="btn ghost close" data-close aria-label="Close list view">Esc</button>
+          </div>
+          <div id="list-body"></div>
+        </div>
+      </div>
+
+      <div id="help" class="overlay" role="dialog" aria-modal="true" aria-labelledby="help-title" hidden>
+        <div class="overlay-card">
+          <div class="overlay-head">
+            <h2 id="help-title">Controls</h2>
+            <button class="btn ghost close" data-close aria-label="Close controls">Esc</button>
+          </div>
+          <dl class="keys">
+            <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</dt><dd>Walk (two keys walk diagonally along the paths)</dd>
+            <dt><kbd>Shift</kbd></dt><dd>Run</dd>
+            <dt><kbd>E</kbd> <kbd>Space</kbd> <kbd>Enter</kbd></dt><dd>Tend the highlighted bed (opens it on GitHub)</dd>
+            <dt><kbd>Tab</kbd> <kbd>1</kbd> <kbd>2</kbd></dt><dd>Switch garden: 1 my PRs, 2 to review</dd>
+            <dt><kbd>L</kbd></dt><dd>List view</dd>
+            <dt><kbd>R</kbd></dt><dd>Refresh from GitHub</dd>
+            <dt><kbd>\</kbd></dt><dd>Collapse the side panel</dd>
+            <dt><kbd>?</kbd></dt><dd>This help</dd>
+            <dt><kbd>Esc</kbd></dt><dd>Close overlays</dd>
+            <dt>Mouse</dt><dd>Click to walk, hover a bed for details, wheel to zoom</dd>
+          </dl>
+          <h3>Bed states</h3>
+          <ul class="legend">
+            <li><span class="badge grey">Seedling</span> draft</li>
+            <li><span class="badge red">Bugs</span> CI failing</li>
+            <li><span class="badge blue">Thirsty</span> threads to answer / re-review</li>
+            <li><span class="badge green">Growing</span> in review</li>
+            <li><span class="badge green">Blooming</span> approved</li>
+            <li><span class="badge amber">Drooping</span> review waiting 1–3 days</li>
+            <li><span class="badge red">Wilting</span> review waiting 3+ days</li>
+          </ul>
+        </div>
+      </div>
+
+      <dialog id="settings" aria-labelledby="settings-title">
+        <form method="dialog" id="settings-form">
+          <div class="overlay-head">
+            <h2 id="settings-title">Settings</h2>
+            <button class="btn ghost close" value="cancel" formnovalidate aria-label="Close settings">Esc</button>
+          </div>
+          <label for="token">GitHub token</label>
+          <input id="token" name="token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…" />
+          <p class="note">
+            Create a <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fine-grained personal access token</a>
+            with <strong>read-only</strong> access to: Pull requests, Contents, Metadata and Checks.
+            It is stored only in this browser's localStorage and sent only to api.github.com.
+          </p>
+          <p class="note warn">
+            Organisation repos protected by SAML SSO need the token authorised for that org
+            (Settings → Developer settings → Personal access tokens → Configure SSO).
+          </p>
+          <label for="repos">Repositories to check for weeds (stale branches)</label>
+          <textarea id="repos" name="repos" rows="3" placeholder="owner/repo, one per line"></textarea>
+          <label for="season">Season</label>
+          <select id="season" name="season">
+            <option value="spring">Spring</option>
+            <option value="summer">Summer</option>
+            <option value="autumn">Autumn</option>
+            <option value="winter">Winter</option>
+          </select>
+          <div class="row">
+            <button type="button" class="btn ghost" id="clear-token">Forget token</button>
+            <span class="spacer"></span>
+            <a class="btn ghost" href="?mock=1">Try mock data</a>
+            <button class="btn primary" value="save" id="save-settings">Save</button>
+          </div>
+        </form>
+      </dialog>
+
+      <div id="fade" class="fade" aria-hidden="true"></div>
+
+      <div id="touch" class="touch" aria-hidden="true">
+        <div class="dpad">
+          <button data-keys="KeyW KeyA" class="up-left" tabindex="-1">↖</button>
+          <button data-keys="KeyW KeyD" class="up-right" tabindex="-1">↗</button>
+          <button data-keys="KeyS KeyA" class="down-left" tabindex="-1">↙</button>
+          <button data-keys="KeyS KeyD" class="down-right" tabindex="-1">↘</button>
+        </div>
+        <button class="tend-btn" id="touch-tend" tabindex="-1">Tend</button>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
