@@ -117,15 +117,17 @@
             <button class="btn ghost close" value="cancel" formnovalidate aria-label="Close settings">Esc</button>
           </div>
           <label for="token">GitHub token</label>
-          <input id="token" name="token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…" />
+          <input id="token" name="token" type="password" autocomplete="off" spellcheck="false" placeholder="ghp_…" />
           <p class="note">
-            Create a <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">fine-grained personal access token</a>
-            with <strong>read-only</strong> access to: Pull requests, Contents, Metadata and Checks.
+            Create a <a href="https://github.com/settings/tokens/new?scopes=repo,read:org&amp;description=PR%20Garden" target="_blank" rel="noopener">personal access token (classic)</a>
+            with the <strong>repo</strong> and <strong>read:org</strong> scopes. PR Garden only reads data,
+            but classic tokens can't be limited to read-only, so keep it private and set an expiry.
             It is stored only in this browser's localStorage and sent only to api.github.com.
           </p>
           <p class="note warn">
-            Organisation repos protected by SAML SSO need the token authorised for that org
-            (Settings → Developer settings → Personal access tokens → Configure SSO).
+            Organisation repos protected by SAML SSO need the token authorised for that org:
+            on the <a href="https://github.com/settings/tokens" target="_blank" rel="noopener">tokens page</a>,
+            click Configure SSO next to the token and authorise the org.
           </p>
           <label for="repos">Repositories to check for weeds (stale branches)</label>
           <textarea id="repos" name="repos" rows="3" placeholder="owner/repo, one per line"></textarea>

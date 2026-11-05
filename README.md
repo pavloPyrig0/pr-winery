@@ -29,33 +29,32 @@ the app asks for a GitHub token.
 
 ## GitHub token setup
 
-PR Garden uses a **fine-grained personal access token** with read-only access.
+PR Garden uses a **personal access token (classic)**.
 
 1. Go to **GitHub → Settings → Developer settings → Personal access tokens →
-   Fine-grained tokens → Generate new token**
-   (<https://github.com/settings/personal-access-tokens/new>).
-2. **Resource owner**: pick your user, or the organisation that owns the repos.
-   A fine-grained token covers one owner. If your PRs live in several orgs, you
-   may need a token per org, or a classic token with the `repo` scope.
-3. **Repository access**: *All repositories*, or select the ones you work in.
-4. **Repository permissions**, all **Read-only**:
-   - Pull requests
-   - Contents (needed for branches, which become weeds)
-   - Metadata (added automatically)
-   - Checks (CI status)
-5. Generate the token, open PR Garden, click the ⚙ button and paste the token.
+   Tokens (classic) → Generate new token (classic)**. This link pre-fills the
+   scopes: <https://github.com/settings/tokens/new?scopes=repo,read:org&description=PR%20Garden>
+2. Pick an expiry (90 days is a sensible default).
+3. Select the scopes:
+   - `repo`: read pull requests, CI status and branches in private repos.
+     If you only work in public repos, `public_repo` is enough.
+   - `read:org`: lets the review garden see review requests made to your teams.
+4. Generate the token, open PR Garden, click the ⚙ button and paste the token.
 
-The token is stored only in your browser's `localStorage` and is sent only to
-`api.github.com`. Use **Forget token** in settings to remove it.
+PR Garden only reads data, but classic tokens can't be limited to read-only.
+The `repo` scope also grants write access, so treat the token like a password.
+It is stored only in your browser's `localStorage` and is sent only to
+`api.github.com`. Use **Forget token** in settings to remove it, and revoke it on
+GitHub when you no longer need it.
+
+One classic token covers every organisation you belong to.
 
 ### Organisations with SAML SSO
 
-If an org enforces SAML single sign-on, the token must be authorised for that org:
-**Settings → Developer settings → Personal access tokens → Configure SSO →
-Authorize** next to the org. Until then, GitHub hides that org's PRs, and the
-garden shows a notice saying some data is hidden.
-
-Some orgs also need an admin to approve fine-grained tokens before they work.
+If an org enforces SAML single sign-on, the token must be authorised for that org.
+On <https://github.com/settings/tokens>, click **Configure SSO** next to the
+token, then **Authorize** next to the org. Until then, GitHub hides that org's
+PRs, and the garden shows a notice saying some data is hidden.
 
 ### Weeds (stale branches)
 

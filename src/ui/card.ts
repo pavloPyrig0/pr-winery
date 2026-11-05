@@ -41,7 +41,7 @@ export function renderSummaryCard(opts: {
     return `
       <div class="eyebrow">${name}</div>
       <div class="summary">Plant your first seeds</div>
-      <p class="sub">Add a read-only GitHub token and your pull requests will grow here as flower beds.</p>
+      <p class="sub">Add a GitHub token and your pull requests will grow here as flower beds.</p>
       <div class="row" style="margin-top:12px">
         <button class="btn primary" data-open-settings>Add token</button>
         <a class="btn" href="?mock=1">Try mock data</a>
