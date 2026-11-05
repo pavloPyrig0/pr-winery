@@ -7,6 +7,7 @@ import type { Action } from './input/keyboard';
 import { Game } from './game';
 import { loadSettings, saveSettings, type Settings } from './settings';
 import { $ } from './ui/dom';
+import { AREA_LABEL } from './world/layout';
 import { Hud } from './ui/hud';
 import { Panel } from './ui/panel';
 import { ListView } from './ui/listView';
@@ -65,7 +66,7 @@ function togglePanel() {
 }
 
 function switchTo(g: GardenId) {
-  game.switchGarden(g);
+  game.jumpTo(g);
 }
 
 function handleAction(a: Action) {
@@ -77,7 +78,7 @@ function handleAction(a: Action) {
   }
   if (a === 'list') {
     help.close();
-    listView.render(store.data, game.garden);
+    listView.render(store.data, game.area ?? 'mine');
     listView.toggle();
     syncPause();
     return;
@@ -91,7 +92,7 @@ function handleAction(a: Action) {
   if (game.paused) return;
   switch (a) {
     case 'switch':
-      switchTo(game.garden === 'mine' ? 'review' : 'mine');
+      switchTo(game.otherArea());
       break;
     case 'garden1':
       switchTo('mine');
@@ -137,7 +138,7 @@ panel.setCollapsed(settings.panelCollapsed);
 const game = new Game($('stage'), {
   onUiChange: () => renderUi(),
   onAction: handleAction,
-  onHover: (item, x, y) => hud.showTooltip(item, game.garden, x, y),
+  onHover: (p, x, y) => hud.showTooltip(p?.item ?? null, p?.garden ?? 'mine', x, y),
   openUrl: (url) => {
     window.open(url, '_blank', 'noopener,noreferrer');
   },
@@ -149,32 +150,42 @@ function renderUi() {
   uiQueued = true;
   queueMicrotask(() => {
     uiQueued = false;
-    const items = game.items;
-    const summary = gardenSummary(items, game.garden);
+    const area = game.area;
+    const gardens: GardenId[] = area ? [area] : ['mine', 'review'];
+    const areaItems = gardens.flatMap((g) => game.itemsBy[g]);
+    const summaries = gardens.map((g) => ({
+      label: area ? null : AREA_LABEL[g],
+      text: gardenSummary(game.itemsBy[g], g),
+    }));
+    const gardenOf = new Map<string, GardenId>();
+    for (const g of ['mine', 'review'] as GardenId[]) for (const i of game.itemsBy[g]) gardenOf.set(i.id, g);
+    const entries = game.items.map((item) => ({ item, garden: gardenOf.get(item.id)! }));
+    const hl = game.highlighted;
+
     hud.render({
-      garden: game.garden,
+      area,
       season: game.season,
-      health: gardenHealth(items),
+      health: gardenHealth(areaItems),
       counts: { mine: game.countFor('mine'), review: game.countFor('review') },
       status: store.status,
       mock: MOCK,
     });
     panel.render({
-      garden: game.garden,
-      items,
-      highlighted: game.highlighted?.item ?? null,
-      summary,
+      area,
+      entries,
+      highlighted: hl ? { item: hl.item, garden: hl.garden } : null,
+      summaries,
       status: store.status.kind,
       fetchedAt: store.data?.fetchedAt ?? null,
       mock: MOCK,
       now: Date.now(),
     });
-    if (listView.open) listView.render(store.data, game.garden);
+    if (listView.open) listView.render(store.data, area ?? 'mine');
     const canvas = document.getElementById('garden-canvas');
-    const beds = items.filter((i) => i.kind === 'bed').length;
+    const where = area ? `You are in the ${AREA_LABEL[area]} area.` : 'You are on the path between the two areas.';
     canvas?.setAttribute(
       'aria-label',
-      `${game.garden === 'mine' ? 'My garden' : 'Review garden'}: an isometric garden with ${beds} flower bed${beds === 1 ? '' : 's'}, one per pull request. ${summary}. Use W A S D to walk, E to tend the highlighted bed, or press L for a list of links.`,
+      `PR Garden: an isometric garden with two fenced areas, My PRs (${game.countFor('mine')} beds) and To review (${game.countFor('review')} beds), one flower bed per pull request. ${where} ${summaries.map((x) => x.text).join('. ')}. Use W A S D to walk, E to tend the highlighted bed, 1 or 2 to jump to an area, or press L for a list of links.`,
     );
   });
 }

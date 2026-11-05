@@ -4,6 +4,7 @@ import { gardenItems, itemBadge, itemTitle, itemUrl } from '../github/mapping';
 import { $, esc } from './dom';
 import { itemMeta } from './card';
 import { Overlay } from './overlays';
+import { AREA_LABEL } from '../world/layout';
 
 export class ListView extends Overlay {
   constructor(onClose: () => void) {
@@ -29,7 +30,7 @@ export class ListView extends Overlay {
               <span class="sub">${esc(itemMeta(i, g, now).join(' · '))} · ${esc(i.reason)}</span></span></li>`;
           })
           .join('');
-        const title = g === 'mine' ? 'My garden' : 'Review garden';
+        const title = AREA_LABEL[g];
         return `<section class="list-section" aria-label="${title}"><h3>${title}</h3><ol>${rows || '<li>Nothing here.</li>'}</ol></section>`;
       })
       .join('');

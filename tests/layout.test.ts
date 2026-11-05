@@ -47,7 +47,7 @@ describe('layoutGarden', () => {
 
   it('puts the most urgent bed nearest the entry arch', () => {
     const w = layoutGarden(items, 'mine');
-    const entry = { x: w.arch.x1, y: w.height };
+    const entry = { x: w.areas[0].arch.x1, y: w.height };
     const dist = (id: string) => {
       const p = w.placed.find((pl) => pl.item.id === id)!;
       return Math.abs(p.x + 1 - entry.x) + Math.abs(p.y + 1 - entry.y);
@@ -74,7 +74,7 @@ describe('layoutGarden', () => {
     const keys = w.placed.map((p) => `${p.x},${p.y}`);
     expect(new Set(keys).size).toBe(keys.length);
     // Spawn and arch stay on the bottom edge.
-    expect(w.arch.y).toBe(w.height - 1);
+    expect(w.areas[0].arch.y).toBe(w.height - 1);
   });
 
   it('places weeds on grass without blocking, basket and compost near the arch', () => {
@@ -94,8 +94,8 @@ describe('layoutGarden', () => {
     expect(isTileBlocked(w, pw.x, pw.y)).toBe(false);
     for (const kind of ['basket', 'compost']) {
       const p = w.placed.find((pl) => pl.item.kind === kind)!;
-      expect(Math.abs(p.y - w.arch.y)).toBeLessThanOrEqual(1);
-      expect(Math.abs(p.x - w.arch.x0)).toBeLessThanOrEqual(2);
+      expect(Math.abs(p.y - w.areas[0].arch.y)).toBeLessThanOrEqual(1);
+      expect(Math.abs(p.x - w.areas[0].arch.x0)).toBeLessThanOrEqual(2);
     }
   });
 

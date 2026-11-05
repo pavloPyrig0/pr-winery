@@ -1,15 +1,23 @@
 // Right-side panel: info card and the "Needs care" list.
 import type { GardenId, GardenItem } from '../types';
 import { itemBadge, itemNeedsCare, itemTitle } from '../github/mapping';
+import { AREA_LABEL } from '../world/layout';
 import type { StatusKind } from '../github/store';
 import { $, esc } from './dom';
 import { renderItemCard, renderSummaryCard } from './card';
 
-export interface PanelState {
+export interface Entry {
+  item: GardenItem;
   garden: GardenId;
-  items: GardenItem[];
-  highlighted: GardenItem | null;
-  summary: string;
+}
+
+export interface PanelState {
+  /** Area the gardener is in, or null on the shared path. */
+  area: GardenId | null;
+  /** Items from both areas, most urgent first. */
+  entries: Entry[];
+  highlighted: Entry | null;
+  summaries: { label: string | null; text: string }[];
   status: StatusKind;
   fetchedAt: string | null;
   mock: boolean;
@@ -52,24 +60,30 @@ export class Panel {
 
   render(s: PanelState) {
     const cardHtml = s.highlighted
-      ? renderItemCard(s.highlighted, s.garden, s.now)
-      : renderSummaryCard({ garden: s.garden, summary: s.summary, status: s.status, fetchedAt: s.fetchedAt, mock: s.mock });
+      ? renderItemCard(s.highlighted.item, s.highlighted.garden, s.now)
+      : renderSummaryCard({
+          title: s.area ? AREA_LABEL[s.area] : 'PR Garden',
+          summaries: s.summaries,
+          status: s.status,
+          fetchedAt: s.fetchedAt,
+          mock: s.mock,
+        });
     if (cardHtml !== this.lastCard) {
       this.card.innerHTML = cardHtml;
       this.lastCard = cardHtml;
     }
 
-    const care = s.items.filter(itemNeedsCare);
+    const care = s.entries.filter((e) => itemNeedsCare(e.item));
     const listHtml = care.length
       ? care
-          .map((i) => {
-            const b = itemBadge(i, s.garden);
-            const sub = i.kind === 'bed' ? `${i.pr.repo} · ${i.reason}` : i.reason;
-            const current = s.highlighted?.id === i.id ? ' current' : '';
-            return `<li><button class="${current.trim()}" data-walk="${esc(i.id)}" aria-label="Walk to ${esc(itemTitle(i))}: ${esc(b.label)}">
+          .map(({ item: i, garden }) => {
+            const b = itemBadge(i, garden);
+            const where = i.kind === 'bed' ? `${i.pr.repo} · ${i.reason}` : i.reason;
+            const current = s.highlighted?.item.id === i.id ? 'current' : '';
+            return `<li><button class="${current}" data-walk="${esc(i.id)}" aria-label="Walk to ${esc(itemTitle(i))} in ${AREA_LABEL[garden]}: ${esc(b.label)}">
               <span class="dot ${b.tone}" aria-hidden="true"></span>
               <span class="row-title">${esc(itemTitle(i))}</span>
-              <span class="row-sub">${esc(sub)}</span></button></li>`;
+              <span class="row-sub"><span class="area-tag">${AREA_LABEL[garden]}</span> ${esc(where)}</span></button></li>`;
           })
           .join('')
       : `<li class="care-empty">Nothing needs care right now.</li>`;

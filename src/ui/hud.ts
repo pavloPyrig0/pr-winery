@@ -2,6 +2,7 @@
 import type { GardenId, GardenItem, Season } from '../types';
 import { itemBadge, itemTitle } from '../github/mapping';
 import type { Status } from '../github/store';
+import { AREA_LABEL } from '../world/layout';
 import { $, esc, timeOfDay } from './dom';
 
 const SEASON_LABEL: Record<Season, string> = { spring: 'Spring', summer: 'Summer', autumn: 'Autumn', winter: 'Winter' };
@@ -30,8 +31,8 @@ export class Hud {
     });
   }
 
-  render(s: { garden: GardenId; season: Season; health: number; counts: Record<GardenId, number>; status: Status; mock: boolean }) {
-    $('garden-name').textContent = s.garden === 'mine' ? 'My garden' : 'Review garden';
+  render(s: { area: GardenId | null; season: Season; health: number; counts: Record<GardenId, number>; status: Status; mock: boolean }) {
+    $('garden-name').textContent = s.area ? AREA_LABEL[s.area] : 'PR Garden';
     $('season-label').textContent = SEASON_LABEL[s.season];
     const pct = Math.round(s.health * 100);
     const fill = $('health-fill');
@@ -41,7 +42,8 @@ export class Hud {
     $('health-label').textContent = `${pct}% healthy`;
     for (const g of ['mine', 'review'] as GardenId[]) {
       const tab = $(`tab-${g}`);
-      tab.setAttribute('aria-selected', String(g === s.garden));
+      if (g === s.area) tab.setAttribute('aria-current', 'location');
+      else tab.removeAttribute('aria-current');
       $(`count-${g}`).textContent = String(s.counts[g]);
     }
     $('btn-refresh').classList.toggle('spin', s.status.kind === 'loading');

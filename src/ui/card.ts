@@ -30,16 +30,15 @@ export function renderItemCard(item: GardenItem, garden: GardenId, now: number):
 }
 
 export function renderSummaryCard(opts: {
-  garden: GardenId;
-  summary: string;
+  title: string;
+  summaries: { label: string | null; text: string }[];
   status: StatusKind;
   fetchedAt: string | null;
   mock: boolean;
 }): string {
-  const name = opts.garden === 'mine' ? 'My garden' : 'Review garden';
   if (opts.status === 'no-token') {
     return `
-      <div class="eyebrow">${name}</div>
+      <div class="eyebrow">${esc(opts.title)}</div>
       <div class="summary">Plant your first seeds</div>
       <p class="sub">Add a GitHub token and your pull requests will grow here as flower beds.</p>
       <div class="row" style="margin-top:12px">
@@ -48,9 +47,16 @@ export function renderSummaryCard(opts: {
       </div>`;
   }
   const updated = opts.mock ? 'Mock data' : opts.fetchedAt ? `Updated ${timeOfDay(opts.fetchedAt)}` : '';
+  const lines = opts.summaries
+    .map((s) =>
+      s.label
+        ? `<p class="summary-line"><span class="summary-label">${esc(s.label)}</span>${esc(s.text)}</p>`
+        : `<div class="summary">${esc(s.text)}</div>`,
+    )
+    .join('');
   return `
-    <div class="eyebrow">${name}</div>
-    <div class="summary">${esc(opts.summary)}</div>
+    <div class="eyebrow">${esc(opts.title)}</div>
+    ${lines}
     <p class="sub">Walk up to a bed and press <kbd>E</kbd> to tend it.</p>
     ${updated ? `<p class="sub">${esc(updated)}</p>` : ''}`;
 }

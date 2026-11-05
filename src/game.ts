@@ -1,7 +1,7 @@
 // Game controller: fixed-timestep simulation, rendering and garden switching.
 import { Application } from 'pixi.js';
 import type { GardenData, GardenId, GardenItem, Season } from './types';
-import { gardenItems, itemUrl } from './github/mapping';
+import { gardenItems, itemUrl, sortByUrgency } from './github/mapping';
 import { Keyboard, type Action } from './input/keyboard';
 import { attachMouse } from './input/mouse';
 import { Camera, mapBounds, type Viewport } from './render/camera';
@@ -9,7 +9,8 @@ import { screenInputToWorld, toScreen, toWorld, worldDirToScreen } from './rende
 import { SEASONS } from './render/palette';
 import { Scene } from './render/scene';
 import { moveWithCollision } from './world/collision';
-import { isTileBlocked, layoutGarden, nearestInteractable, type Placed, type World } from './world/layout';
+import { areaAt, isTileBlocked, layoutGarden, nearestInteractable, type Placed, type World } from './world/layout';
+import { composeWorld } from './world/compose';
 import { findPath, tilesAround, type TilePos } from './world/pathfinding';
 
 export const STEP = 1 / 60;
@@ -24,7 +25,7 @@ export interface GameHooks {
   /** Something the UI shows has changed. */
   onUiChange(): void;
   onAction(a: Action): void;
-  onHover(item: GardenItem | null, clientX: number, clientY: number): void;
+  onHover(target: Placed | null, clientX: number, clientY: number): void;
   openUrl(url: string): void;
 }
 
@@ -50,10 +51,11 @@ export class Game {
   app = new Application();
   keyboard: Keyboard;
   camera = new Camera();
-  garden: GardenId = 'mine';
+  /** Area the gardener is standing in (null on the shared path). */
+  area: GardenId | null = null;
   season: Season;
   data: GardenData | null = null;
-  items: GardenItem[] = [];
+  itemsBy: Record<GardenId, GardenItem[]> = { mine: [], review: [] };
   world!: World;
   scene: Scene | null = null;
   highlighted: Placed | null = null;
@@ -99,11 +101,11 @@ export class Game {
     this.host.appendChild(canvas);
     attachMouse(canvas, {
       onClick: (x, y) => this.onClick(x, y),
-      onHover: (x, y, cx, cy) => this.hooks.onHover(this.hitTest(x, y)?.item ?? null, cx, cy),
+      onHover: (x, y, cx, cy) => this.hooks.onHover(this.hitTest(x, y), cx, cy),
       onLeave: () => this.hooks.onHover(null, 0, 0),
       onZoom: (f) => this.camera.setZoom(this.camera.zoom * f),
     });
-    this.camera.baseScale = window.innerWidth < 900 ? 1.1 : 1.4;
+    this.camera.baseScale = window.innerWidth < 900 ? 1.0 : 1.25;
     this.rebuild(true);
     this.start();
   }
@@ -125,31 +127,43 @@ export class Game {
     this.rebuild(false);
   }
 
-  private computeItems(): GardenItem[] {
-    return this.data ? gardenItems(this.data, this.garden, Date.now()) : [];
+  /** Every interactable in both areas, most urgent first. */
+  get items(): GardenItem[] {
+    return sortByUrgency([...this.itemsBy.mine, ...this.itemsBy.review]);
   }
 
-  private signature(items: GardenItem[]) {
-    return items.map((i) => `${i.id}:${i.kind === 'bed' ? i.state : ''}`).join('|');
+  private computeItems(): Record<GardenId, GardenItem[]> {
+    const now = Date.now();
+    return this.data
+      ? { mine: gardenItems(this.data, 'mine', now), review: gardenItems(this.data, 'review', now) }
+      : { mine: [], review: [] };
   }
 
-  /** Rebuild layout + scene. `respawn` puts the gardener at the arch. */
+  private signature(by: Record<GardenId, GardenItem[]>) {
+    return (['mine', 'review'] as GardenId[])
+      .map((g) => by[g].map((i) => `${i.id}:${i.kind === 'bed' ? i.state : ''}`).join('|'))
+      .join('||');
+  }
+
+  /** Rebuild layout + scene. `respawn` puts the gardener at the start. */
   rebuild(respawn: boolean) {
-    this.items = this.computeItems();
-    this.stateSig = this.signature(this.items);
-    this.world = layoutGarden(this.items, this.garden);
-    const archLabel = this.garden === 'mine' ? 'To the review garden' : 'To my garden';
+    this.itemsBy = this.computeItems();
+    this.stateSig = this.signature(this.itemsBy);
+    this.world = composeWorld(layoutGarden(this.itemsBy.mine, 'mine'), layoutGarden(this.itemsBy.review, 'review'));
     const old = this.scene;
-    this.scene = new Scene(this.world, { season: this.season, archLabel });
+    this.scene = new Scene(this.world, { season: this.season });
     this.app.stage.removeChildren();
     this.app.stage.addChild(this.scene.root);
     old?.destroy();
 
     const g = this.g;
-    if (respawn || this.blockedAt(g.x, g.y)) this.spawnAtArch();
+    if (respawn || this.blockedAt(g.x, g.y) || g.x >= this.world.width || g.y >= this.world.height) {
+      this.place(this.world.spawn.x, this.world.spawn.y);
+    }
     g.path = null;
     g.pathTarget = null;
     this.highlighted = null;
+    this.updateArea(true);
     this.updateProximity(true);
     this.syncGardener(1);
     const s = toScreen(g.x, g.y);
@@ -157,15 +171,18 @@ export class Game {
     this.hooks.onUiChange();
   }
 
-  private spawnAtArch() {
+  /** Put the gardener at a point, facing up the screen. */
+  private place(x: number, y: number) {
     const g = this.g;
-    g.x = g.px = this.world.spawn.x;
-    g.y = g.py = this.world.spawn.y;
+    g.x = g.px = x;
+    g.y = g.py = y;
     g.vx = g.vy = 0;
     g.fx = -Math.SQRT1_2;
     g.fy = -Math.SQRT1_2;
     g.back = true;
     g.tend = null;
+    g.path = null;
+    g.pathTarget = null;
   }
 
   private blockedAt(x: number, y: number) {
@@ -174,20 +191,40 @@ export class Game {
 
   private isBlocked = (tx: number, ty: number) => isTileBlocked(this.world, tx, ty);
 
-  // ---- Garden switching --------------------------------------------------
+  // ---- Areas -------------------------------------------------------------
 
-  switchGarden(id: GardenId) {
-    if (this.transitioning || id === this.garden) return;
+  /** Quick travel: fade and reappear just inside an area's entrance. */
+  jumpTo(id: GardenId) {
+    if (this.transitioning) return;
+    const area = this.world.areas.find((a) => a.garden === id);
+    if (!area) return;
     this.transitioning = true;
     const fade = document.getElementById('fade');
     const ms = this.reducedMotion ? 0 : FADE_MS;
     fade?.classList.add('on');
     window.setTimeout(() => {
-      this.garden = id;
-      this.rebuild(true);
+      this.place(area.spawn.x, area.spawn.y);
+      this.updateArea(false);
+      this.updateProximity(true);
+      this.syncGardener(1);
+      const s = toScreen(this.g.x, this.g.y);
+      this.camera.follow(s.x, s.y - 20, 0, this.view, mapBounds(this.world.width, this.world.height), true);
       fade?.classList.remove('on');
       window.setTimeout(() => (this.transitioning = false), ms);
     }, ms);
+  }
+
+  /** The area to jump to for Tab: the other one, or My PRs from the path. */
+  otherArea(): GardenId {
+    return this.area === 'mine' ? 'review' : 'mine';
+  }
+
+  private updateArea(force: boolean) {
+    const a = areaAt(this.world, this.g.x, this.g.y)?.garden ?? null;
+    if (a !== this.area || force) {
+      this.area = a;
+      this.hooks.onUiChange();
+    }
   }
 
   // ---- Commands from UI ----------------------------------------------------
@@ -279,10 +316,10 @@ export class Game {
     // Re-check time-based states once a minute (review beds age into wilting).
     if (this.time - this.lastStateCheck > 60) {
       this.lastStateCheck = this.time;
-      const items = this.computeItems();
-      if (this.signature(items) !== this.stateSig) this.rebuild(false);
+      const by = this.computeItems();
+      if (this.signature(by) !== this.stateSig) this.rebuild(false);
       else {
-        this.items = items;
+        this.itemsBy = by;
         this.hooks.onUiChange();
       }
     }
@@ -368,7 +405,7 @@ export class Game {
     }
     this.updateFacingSprite();
     this.updateProximity(false);
-    this.checkArch();
+    this.updateArea(false);
   }
 
   private arrive() {
@@ -400,15 +437,6 @@ export class Game {
       this.highlighted = near;
       this.scene?.setHighlight(near);
       this.hooks.onUiChange();
-    }
-  }
-
-  private checkArch() {
-    if (this.transitioning) return;
-    const g = this.g;
-    const a = this.world.arch;
-    if (g.y > this.world.height - 0.4 && g.x >= a.x0 && g.x <= a.x1 + 1) {
-      this.switchGarden(this.garden === 'mine' ? 'review' : 'mine');
     }
   }
 
@@ -454,7 +482,6 @@ export class Game {
   // ---- Queries for UI ----------------------------------------------------
 
   countFor(id: GardenId): number {
-    if (!this.data) return 0;
-    return gardenItems(this.data, id, Date.now()).filter((i) => i.kind === 'bed').length;
+    return this.itemsBy[id].filter((i) => i.kind === 'bed').length;
   }
 }

@@ -100,6 +100,30 @@ export function drawBench(): Container {
   return c;
 }
 
+/** One tile of picket fence along the tile's front (world +y) edge. */
+export function drawFence(): Container {
+  const c = new Container();
+  const g = new Graphics();
+  const a = toScreen(-0.5, 0);
+  const b = toScreen(0.5, 0);
+  g.poly([a.x, a.y, b.x, b.y, b.x, b.y + 3, a.x, a.y + 3]).fill({ color: C.shadow, alpha: 0.15 });
+  // Rails.
+  for (const h of [8, 16]) {
+    g.poly([a.x, a.y - h, b.x, b.y - h, b.x, b.y - h + 3, a.x, a.y - h + 3]).fill(C.woodDark);
+  }
+  // Pickets with pointed tops.
+  const n = 4;
+  for (let i = 0; i < n; i++) {
+    const t = (i + 0.5) / n;
+    const x = a.x + (b.x - a.x) * t;
+    const y = a.y + (b.y - a.y) * t;
+    g.poly([x - 2.5, y, x + 2.5, y, x + 2.5, y - 20, x, y - 23, x - 2.5, y - 20]).fill(0xf3ead8);
+    g.poly([x + 0.8, y, x + 2.5, y, x + 2.5, y - 20, x + 0.8, y - 21]).fill({ color: 0xc9bea6, alpha: 0.9 });
+  }
+  c.addChild(g);
+  return c;
+}
+
 export function drawBoat(): Container {
   const c = new Container();
   const g = new Graphics();
@@ -150,16 +174,16 @@ export function drawArch(label: string, pal: SeasonPalette): Container {
   const signY = -H + 8;
   g.moveTo(-26, signY - 18).lineTo(-26, signY).stroke({ width: 1.2, color: 0x3d2a1a });
   g.moveTo(26, signY - 18).lineTo(26, signY).stroke({ width: 1.2, color: 0x3d2a1a });
-  g.roundRect(-46, signY, 92, 20, 4).fill(C.woodLight);
-  g.roundRect(-46, signY, 92, 20, 4).stroke({ width: 2, color: C.woodDark });
+  g.roundRect(-44, signY, 88, 24, 5).fill(C.woodLight);
+  g.roundRect(-44, signY, 88, 24, 5).stroke({ width: 2, color: C.woodDark });
   c.addChild(g);
   const t = new Text({
     text: label,
-    style: { fontFamily: 'Roboto, sans-serif', fontSize: 9.5, fontWeight: '700', fill: 0x3d2a1a },
+    style: { fontFamily: 'Roboto, sans-serif', fontSize: 13, fontWeight: '700', fill: 0x3d2a1a },
     resolution: 3,
   });
   t.anchor.set(0.5);
-  t.position.set(0, signY + 10);
+  t.position.set(0, signY + 12);
   c.addChild(t);
   return c;
 }

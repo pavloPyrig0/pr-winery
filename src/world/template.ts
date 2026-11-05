@@ -3,6 +3,7 @@
 // Legend
 //   .  grass            #  brick path        ~  water          =  wooden dock
 //   o  rowboat (water)  T  tree              b  bush           n  bench
+//   f  picket fence
 //   B  bed slot (2×2)   A  arch (exit)       h  harvest basket c  compost heap
 //
 // Rows are y (down-left on screen), columns are x (down-right on screen).
@@ -16,6 +17,7 @@ export type Tile =
   | 'tree'
   | 'bush'
   | 'bench'
+  | 'fence'
   | 'bed'
   | 'arch'
   | 'basket'
@@ -57,6 +59,7 @@ const CHAR_TILE: Record<string, Tile> = {
   T: 'tree',
   b: 'bush',
   n: 'bench',
+  f: 'fence',
   B: 'bed',
   A: 'arch',
   h: 'basket',
@@ -82,6 +85,7 @@ export const BLOCKED_TILES: ReadonlySet<Tile> = new Set<Tile>([
   'tree',
   'bush',
   'bench',
+  'fence',
   'bed',
   'basket',
   'compost',

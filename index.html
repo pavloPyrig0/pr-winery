@@ -16,7 +16,7 @@
 
       <header class="hud">
         <div class="hud-garden">
-          <h1 id="garden-name">My garden</h1>
+          <h1 id="garden-name">PR Garden</h1>
           <div class="hud-meta">
             <span id="season-label">Spring</span>
             <span class="dot" aria-hidden="true">·</span>
@@ -27,9 +27,9 @@
           </div>
         </div>
 
-        <nav class="tabs" role="tablist" aria-label="Gardens">
-          <button role="tab" id="tab-mine" aria-selected="true" data-garden="mine"><kbd>1</kbd><span>My PRs</span><span class="count" id="count-mine">0</span></button>
-          <button role="tab" id="tab-review" aria-selected="false" data-garden="review"><kbd>2</kbd><span>To review</span><span class="count" id="count-review">0</span></button>
+        <nav class="tabs" aria-label="Jump to area">
+          <button id="tab-mine" data-garden="mine" title="Jump to My PRs (1)"><kbd>1</kbd><span>My PRs</span><span class="count" id="count-mine">0</span></button>
+          <button id="tab-review" data-garden="review" title="Jump to To review (2)"><kbd>2</kbd><span>To review</span><span class="count" id="count-review">0</span></button>
         </nav>
 
         <div class="hud-actions">
@@ -89,7 +89,7 @@
             <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</dt><dd>Walk (two keys walk diagonally along the paths)</dd>
             <dt><kbd>Shift</kbd></dt><dd>Run</dd>
             <dt><kbd>E</kbd> <kbd>Space</kbd> <kbd>Enter</kbd></dt><dd>Tend the highlighted bed (opens it on GitHub)</dd>
-            <dt><kbd>Tab</kbd> <kbd>1</kbd> <kbd>2</kbd></dt><dd>Switch garden: 1 my PRs, 2 to review</dd>
+            <dt><kbd>Tab</kbd> <kbd>1</kbd> <kbd>2</kbd></dt><dd>Jump to an area entrance: 1 My PRs, 2 To review (Tab goes to the other one)</dd>
             <dt><kbd>L</kbd></dt><dd>List view</dd>
             <dt><kbd>R</kbd></dt><dd>Refresh from GitHub</dd>
             <dt><kbd>\</kbd></dt><dd>Collapse the side panel</dd>

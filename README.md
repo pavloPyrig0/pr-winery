@@ -3,9 +3,13 @@
 An isometric garden where your GitHub work grows as flower beds. Walk a small
 gardener around with the keyboard, and "tend" a bed to open its pull request.
 
-- **My garden**: your open PRs, plus stale branches (weeds), a harvest basket
+Everything lives in one garden with two fenced areas side by side. Each area
+has a vine-covered arch with its name on the sign, and a shared brick path runs
+along both entrances.
+
+- **My PRs**: your open PRs, plus stale branches (weeds), a harvest basket
   (merged this week) and a compost heap (closed without merging, last 30 days).
-- **Review garden**: PRs waiting for your review.
+- **To review**: PRs waiting for your review.
 
 It's a static site (Vite + TypeScript + PixiJS v8). There's no backend: the app
 calls the GitHub GraphQL API straight from your browser.
@@ -38,7 +42,7 @@ PR Garden uses a **personal access token (classic)**.
 3. Select the scopes:
    - `repo`: read pull requests, CI status and branches in private repos.
      If you only work in public repos, `public_repo` is enough.
-   - `read:org`: lets the review garden see review requests made to your teams.
+   - `read:org`: lets the To review area see review requests made to your teams.
 4. Generate the token, open PR Garden, click the ⚙ button and paste the token.
 
 PR Garden only reads data, but classic tokens can't be limited to read-only.
@@ -84,7 +88,7 @@ had no commits for 14 days or more.
 | Thirsty | You reviewed before and new commits have arrived since |
 | Blooming | You approved and it's waiting for the author to merge |
 
-The review garden combines two searches: `review-requested:@me` and
+The To review area combines two searches: `review-requested:@me` and
 `reviewed-by:@me -author:@me`. The second search finds PRs that need a re-review
 and PRs you've already approved. PRs you reviewed with nothing new since (the
 ball is in the author's court) are left out.
@@ -101,7 +105,7 @@ cached garden stays on screen.
 | **W A S D** / arrows | Walk relative to the screen. Two keys together walk diagonally along the paths. |
 | **Shift** | Run |
 | **E**, **Space**, **Enter** | Tend the highlighted bed (opens it on GitHub) |
-| **Tab**, **1**, **2** | Switch garden (1 = my PRs, 2 = to review) |
+| **Tab**, **1**, **2** | Jump to an area's entrance (1 = My PRs, 2 = To review; Tab = the other area) |
 | **L** | List view: the same data as plain links |
 | **R** | Refresh |
 | **\\** | Collapse the side panel |
@@ -109,8 +113,9 @@ cached garden stays on screen.
 | **Esc** | Close overlays |
 
 Mouse: click a tile or bed to walk there, hover a bed for details, and use the
-wheel to zoom. Walking through the arch at the bottom edge takes you to the other
-garden.
+wheel to zoom. Clicking a bed in the other area walks you out through one arch,
+along the path and in through the other. The panel's "Needs care" list covers
+both areas, and each row is tagged with its area.
 
 Game keys never scroll the page, and they're ignored while you type in a text
 field. When a button has keyboard focus, Tab, Space and Enter keep their usual
@@ -140,7 +145,8 @@ site and publishes `dist/` to Pages on every push to `main`.
 src/
   github/   client.ts (GraphQL + errors), queries.ts, mapping.ts (pure state logic),
             store.ts (cache/refresh), mock.ts
-  world/    template.ts (14×14 map), layout.ts (placement, proximity),
+  world/    template.ts (14×14 area), layout.ts (placement, proximity),
+            compose.ts (both areas + shared path in one world),
             collision.ts, pathfinding.ts (A*)
   render/   iso.ts, drawGround.ts, drawBed.ts, drawProps.ts, drawGardener.ts,
             camera.ts, ambient.ts, scene.ts, palette.ts
@@ -148,7 +154,7 @@ src/
   ui/       hud.ts, panel.ts, card.ts, listView.ts, settings.ts, help.ts, touch.ts
   game.ts   fixed-timestep loop (60 Hz update, render on rAF)
   main.ts   wiring
-tests/      mapping, layout, collision, pathfinding, client
+tests/      mapping, layout, compose, collision, pathfinding, client
 ```
 
 All art is drawn procedurally with Pixi `Graphics`, seeded per bed so it stays

@@ -66,10 +66,10 @@ kbd {
   white-space: nowrap;
 }
 .tabs button:hover { background: #f4f5f0; }
-.tabs button[aria-selected='true'] { background: var(--primary); color: #fff; }
-.tabs button[aria-selected='true'] kbd { background: rgba(255,255,255,0.15); color: #fff; border-color: rgba(255,255,255,0.35); }
+.tabs button[aria-current='location'] { background: var(--primary); color: #fff; }
+.tabs button[aria-current='location'] kbd { background: rgba(255,255,255,0.15); color: #fff; border-color: rgba(255,255,255,0.35); }
 .tabs .count { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--surface-tint); color: var(--primary); font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
-.tabs button[aria-selected='true'] .count { background: #fff; }
+.tabs button[aria-current='location'] .count { background: #fff; }
 
 .hud-actions { justify-self: end; display: flex; gap: 6px; }
 .icon-btn {
@@ -125,6 +125,9 @@ kbd {
 .info-card .eyebrow { font-size: 12px; font-weight: 500; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.06em; }
 .info-card .summary { font-size: 18px; line-height: 26px; font-weight: 700; color: var(--primary); margin: 6px 0 8px; }
 .info-card .sub { color: var(--text-2); font-size: 13px; }
+.info-card .summary-line { display: grid; grid-template-columns: 72px 1fr; gap: 8px; margin: 8px 0; font-weight: 500; color: var(--text); }
+.summary-label { font-size: 12px; font-weight: 700; color: var(--primary); }
+.area-tag { display: inline-block; padding: 0 6px; margin-right: 2px; border-radius: 4px; background: var(--surface-tint); color: var(--primary); font-size: 11px; font-weight: 700; }
 
 .care { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .care-list { list-style: none; margin: 0; padding: 0; overflow: auto; display: flex; flex-direction: column; gap: 6px; }

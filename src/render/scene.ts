@@ -8,7 +8,7 @@ import { Ambient } from './ambient';
 import { CURB_H, drawBed } from './drawBed';
 import { drawGround } from './drawGround';
 import { createGardener, SPOUT_TIP, type Facing, type GardenerArt } from './drawGardener';
-import { drawArch, drawBasket, drawBench, drawBoat, drawBush, drawCompost, drawMarker, drawTree, drawWeed } from './drawProps';
+import { drawArch, drawFence, drawBasket, drawBench, drawBoat, drawBush, drawCompost, drawMarker, drawTree, drawWeed } from './drawProps';
 import { depthOf, polyPoints, toScreen } from './iso';
 import { SEASONS } from './palette';
 
@@ -46,7 +46,6 @@ function dashedPoly(g: Graphics, pts: number[], dash: number, gap: number, offse
 
 export interface SceneOptions {
   season: Season;
-  archLabel: string;
 }
 
 export class Scene {
@@ -95,11 +94,14 @@ export class Scene {
         else if (t === 'bush') view = drawBush(seed, pal);
         else if (t === 'bench') view = drawBench();
         else if (t === 'boat') view = drawBoat();
-        if (view) this.addObject(view, x + 0.5, y + 0.5);
+        if (t === 'fence') this.addObject(drawFence(), x + 0.5, y + 0.95);
+        else if (view) this.addObject(view, x + 0.5, y + 0.5);
       }
     }
-    const arch = drawArch(opts.archLabel, pal);
-    this.addObject(arch, world.arch.x1, world.arch.y + 0.5);
+    // One vine-covered arch per area, with the area's name on the sign.
+    for (const area of world.areas) {
+      this.addObject(drawArch(area.label, pal), area.arch.x1, area.arch.y + 0.5);
+    }
 
     // Interactables.
     let bedIndex = 0;

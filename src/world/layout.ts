@@ -15,6 +15,8 @@ export interface Placed {
   h: number;
   /** Blocks movement (beds, basket, compost). Weeds do not. */
   solid: boolean;
+  /** Which garden area the object belongs to. */
+  garden: GardenId;
 }
 
 export interface Slot {
@@ -22,14 +24,30 @@ export interface Slot {
   y: number;
 }
 
-export interface World {
+/** A fenced garden area inside the world, entered through its arch. */
+export interface Area {
   garden: GardenId;
+  /** Name on the entrance sign. */
+  label: string;
+  x0: number;
+  y0: number;
+  width: number;
+  height: number;
+  /** The two arch tiles (x0, x1) on row y, the area's bottom edge. */
+  arch: { x0: number; x1: number; y: number };
+  /** Just inside the arch. */
+  spawn: { x: number; y: number };
+}
+
+export const AREA_LABEL: Record<GardenId, string> = { mine: 'My PRs', review: 'To review' };
+
+export interface World {
   width: number;
   height: number;
   tiles: Tile[];
   placed: Placed[];
-  /** Tile coords of the two arch tiles' left x and the arch row. */
-  arch: { x0: number; x1: number; y: number };
+  areas: Area[];
+  /** Where the gardener starts. */
   spawn: { x: number; y: number };
   /** Footprint lookup: tile index → placed object. */
   occupancy: Map<number, Placed>;
@@ -121,7 +139,7 @@ export function layoutGarden(items: GardenItem[], garden: GardenId): World {
 
   beds.forEach((bed, i) => {
     const s = slots[i];
-    placed.push({ item: bed, x: s.x, y: s.y, w: 2, h: 2, solid: true });
+    placed.push({ item: bed, x: s.x, y: s.y, w: 2, h: 2, solid: true, garden });
   });
   // Unused slots revert to grass.
   for (const s of slots.slice(beds.length)) {
@@ -133,7 +151,7 @@ export function layoutGarden(items: GardenItem[], garden: GardenId): World {
     const t = tiles[i];
     if (t !== 'basket' && t !== 'compost') continue;
     const item = items.find((it) => it.kind === t);
-    if (item) placed.push({ item, x: i % width, y: Math.floor(i / width), w: 1, h: 1, solid: true });
+    if (item) placed.push({ item, x: i % width, y: Math.floor(i / width), w: 1, h: 1, solid: true, garden });
     else tiles[i] = 'grass';
   }
 
@@ -148,6 +166,7 @@ export function layoutGarden(items: GardenItem[], garden: GardenId): World {
       const x = i % width;
       const y = Math.floor(i / width);
       if (tiles[i] !== 'grass') continue;
+      if (y === height - 1) continue; // the front edge gets a fence
       if (y >= height - 2 && Math.abs(x + 0.5 - archX) < 3) continue; // keep the entrance clear
       grass.push(i);
     }
@@ -155,23 +174,31 @@ export function layoutGarden(items: GardenItem[], garden: GardenId): World {
     weeds.forEach((w, k) => {
       const idx = grass[k];
       if (idx === undefined) return;
-      placed.push({ item: w, x: idx % width, y: Math.floor(idx / width), w: 1, h: 1, solid: false });
+      placed.push({ item: w, x: idx % width, y: Math.floor(idx / width), w: 1, h: 1, solid: false, garden });
     });
   }
 
-  const occupancy = new Map<number, Placed>();
-  for (const p of placed) {
-    for (let y = p.y; y < p.y + p.h; y++) for (let x = p.x; x < p.x + p.w; x++) occupancy.set(y * width + x, p);
-  }
+  const occupancy = buildOccupancy(placed, width);
 
+  const spawn = { x: entry.x, y: height - 2.1 };
   return {
-    garden,
     width,
     height,
     tiles,
     placed,
-    arch: { x0: entry.x - 1, x1: entry.x, y: height - 1 },
-    spawn: { x: entry.x, y: height - 2.1 },
+    areas: [
+      {
+        garden,
+        label: AREA_LABEL[garden],
+        x0: 0,
+        y0: 0,
+        width,
+        height,
+        arch: { x0: entry.x - 1, x1: entry.x, y: height - 1 },
+        spawn,
+      },
+    ],
+    spawn,
     occupancy,
   };
 }
@@ -219,4 +246,17 @@ export function nearestInteractable(
     }
   }
   return best;
+}
+
+export function buildOccupancy(placed: Placed[], width: number): Map<number, Placed> {
+  const occupancy = new Map<number, Placed>();
+  for (const p of placed) {
+    for (let y = p.y; y < p.y + p.h; y++) for (let x = p.x; x < p.x + p.w; x++) occupancy.set(y * width + x, p);
+  }
+  return occupancy;
+}
+
+/** The area containing a world point, or null on the shared path. */
+export function areaAt(world: World, x: number, y: number): Area | null {
+  return world.areas.find((a) => x >= a.x0 && x < a.x0 + a.width && y >= a.y0 && y < a.y0 + a.height) ?? null;
 }
