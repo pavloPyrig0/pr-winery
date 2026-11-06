@@ -15,6 +15,15 @@ runs along both entrances.
   approved becomes a **bottle** in this area's cellar: corked while it waits to
   be merged, wax-sealed once merged, grey capsule if it was closed unmerged.
 
+![The whole estate: the My PRs and To review vineyards side by side, with barrels and bottles in the cellar rows at the back](docs/screenshots/overview.jpg)
+
+| Vines | Barrels | Bottles |
+| --- | --- | --- |
+| ![Vine beds on trellises: ripe purple grapes on an approved PR, a pest marker on a failing one](docs/screenshots/vines.jpg) | ![The winemaker next to a row of oak barrels, one per merged PR](docs/screenshots/barrels.jpg) | ![Bottles on crates: corked while open, wax-sealed once merged, grey cap if closed](docs/screenshots/bottles.jpg) |
+| Open PRs grow as grapevines | Your merged PRs age in barrels | PRs you approved get bottled |
+
+Screenshots use the mock data (`?mock=1`).
+
 It's a static site (Vite + TypeScript + PixiJS v8). There's no backend: the app
 calls the GitHub GraphQL API straight from your browser.
 
