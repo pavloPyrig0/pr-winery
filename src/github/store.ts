@@ -11,7 +11,7 @@ export interface Status {
   resetAt?: string;
 }
 
-const CACHE_KEY = 'prgarden.cache.v1';
+const CACHE_KEY = 'prgarden.cache.v2';
 const REFRESH_MS = 5 * 60_000;
 const FOCUS_MIN_GAP_MS = 30_000;
 

@@ -3,7 +3,7 @@ import { toBed } from '../src/github/mapping';
 import type { BedItem, GardenItem, WeedItem } from '../src/types';
 import { BASE_TEMPLATE, buildTemplate } from '../src/world/template';
 import { BASE_SLOTS, findSlots, isTileBlocked, layoutGarden, nearestInteractable, orderBeds } from '../src/world/layout';
-import { D, NOW, makePr } from './fixtures';
+import { D, NOW, makeCellarPr, makePr } from './fixtures';
 
 const bed = (p: Parameters<typeof makePr>[0]): BedItem => toBed(makePr(p), 'mine', 'me', NOW)!;
 
@@ -77,7 +77,7 @@ describe('layoutGarden', () => {
     expect(w.areas[0].arch.y).toBe(w.height - 1);
   });
 
-  it('places weeds on grass without blocking, basket and compost near the arch', () => {
+  it('places weeds on grass without blocking, compost near the arch', () => {
     const weed: WeedItem = {
       kind: 'weed',
       id: 'weed:o/r:old',
@@ -86,23 +86,43 @@ describe('layoutGarden', () => {
       reason: '',
     };
     const w = layoutGarden(
-      [...items, weed, { kind: 'basket', id: 'basket', url: 'h', count: 1, urgency: 0, reason: '' }, { kind: 'compost', id: 'compost', url: 'c', count: 0, urgency: 0, reason: '' }],
+      [...items, weed, { kind: 'compost', id: 'compost', url: 'c', count: 0, urgency: 0, reason: '' }],
       'mine',
     );
     const pw = w.placed.find((p) => p.item.kind === 'weed')!;
     expect(w.tiles[pw.y * w.width + pw.x]).toBe('grass');
     expect(isTileBlocked(w, pw.x, pw.y)).toBe(false);
-    for (const kind of ['basket', 'compost']) {
-      const p = w.placed.find((pl) => pl.item.kind === kind)!;
-      expect(Math.abs(p.y - w.areas[0].arch.y)).toBeLessThanOrEqual(1);
-      expect(Math.abs(p.x - w.areas[0].arch.x0)).toBeLessThanOrEqual(2);
-    }
+    const p = w.placed.find((pl) => pl.item.kind === 'compost')!;
+    expect(Math.abs(p.y - w.areas[0].arch.y)).toBeLessThanOrEqual(1);
+    expect(Math.abs(p.x - w.areas[0].arch.x0)).toBeLessThanOrEqual(2);
   });
 
-  it('review garden turns unused basket/compost spots into grass', () => {
+  it('review vineyard turns the unused compost spot into grass', () => {
     const w = layoutGarden(items, 'review');
-    expect(w.tiles.includes('basket')).toBe(false);
     expect(w.tiles.includes('compost')).toBe(false);
+  });
+
+  it('stores every barrel in cellar rows at the back, each reachable from the aisle', () => {
+    const barrels: GardenItem[] = Array.from({ length: 11 }, (_, i) => ({
+      kind: 'barrel' as const,
+      id: `barrel:${i}`,
+      pr: makeCellarPr({ id: `m${i}` }),
+      urgency: 0,
+      reason: '',
+    }));
+    const plain = layoutGarden(items, 'mine');
+    const w = layoutGarden([...items, ...barrels], 'mine');
+    // 11 barrels need two cellar rows (8 per row), each with an aisle.
+    expect(w.height).toBe(plain.height + 4);
+    const placedBarrels = w.placed.filter((p) => p.item.kind === 'barrel');
+    expect(placedBarrels.map((p) => p.item.id)).toEqual(barrels.map((b) => b.id));
+    for (const p of placedBarrels) {
+      expect(p.y).toBeLessThan(4);
+      expect(isTileBlocked(w, p.x, p.y + 1)).toBe(false);
+    }
+    expect(w.tiles.includes('cellar')).toBe(true);
+    // Unused slots in the last row revert to grass.
+    expect(w.tiles.filter((t) => t === 'cellar').length).toBe(11);
   });
 });
 

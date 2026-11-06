@@ -1,15 +1,19 @@
-# PR Garden
+# PR Winery
 
-An isometric garden where your GitHub work grows as flower beds. Walk a small
-gardener around with the keyboard, and "tend" a bed to open its pull request.
+An isometric winery where your GitHub work grows as grapevines. Walk a small
+winemaker around with the keyboard, and open a vine, barrel or bottle to go to
+its pull request.
 
-Everything lives in one garden with two fenced areas side by side. Each area
-has a vine-covered arch with its name on the sign, and a shared brick path runs
-along both entrances.
+Everything lives in one estate with two fenced vineyards side by side. Each
+area has a vine-covered arch with its name on the sign, and a shared brick path
+runs along both entrances.
 
-- **My PRs**: your open PRs, plus stale branches (weeds), a harvest basket
-  (merged this week) and a compost heap (closed without merging, last 30 days).
-- **To review**: PRs waiting for your review.
+- **My PRs**: your open PRs as vine beds, plus stale branches (weeds) and a
+  pomace heap (closed without merging, last 30 days). Every PR of yours merged
+  in the last 30 days becomes a **barrel**, stored in cellar rows at the back.
+- **To review**: PRs waiting for your review as vine beds. Every PR you
+  approved becomes a **bottle** in this area's cellar: corked while it waits to
+  be merged, wax-sealed once merged, grey capsule if it was closed unmerged.
 
 It's a static site (Vite + TypeScript + PixiJS v8). There's no backend: the app
 calls the GitHub GraphQL API straight from your browser.
@@ -33,7 +37,7 @@ the app asks for a GitHub token.
 
 ## GitHub token setup
 
-PR Garden uses a **personal access token (classic)**.
+PR Winery uses a **personal access token (classic)**.
 
 1. Go to **GitHub → Settings → Developer settings → Personal access tokens →
    Tokens (classic) → Generate new token (classic)**. This link pre-fills the
@@ -43,9 +47,9 @@ PR Garden uses a **personal access token (classic)**.
    - `repo`: read pull requests, CI status and branches in private repos.
      If you only work in public repos, `public_repo` is enough.
    - `read:org`: lets the To review area see review requests made to your teams.
-4. Generate the token, open PR Garden, click the ⚙ button and paste the token.
+4. Generate the token, open PR Winery, click the ⚙ button and paste the token.
 
-PR Garden only reads data, but classic tokens can't be limited to read-only.
+PR Winery only reads data, but classic tokens can't be limited to read-only.
 The `repo` scope also grants write access, so treat the token like a password.
 It is stored only in your browser's `localStorage` and is sent only to
 `api.github.com`. Use **Forget token** in settings to remove it, and revoke it on
@@ -66,27 +70,39 @@ In settings, list the repos to check (`owner/repo`, one per line). A branch
 becomes a weed when its last commit is yours, it has no pull request, and it has
 had no commits for 14 days or more.
 
-## How beds are grown
+## How vines are grown
 
 **My PRs**, checked in this order:
 
 | State | When | Look |
 | --- | --- | --- |
-| Seedling | Draft | Bare soil, tiny sprouts |
-| Bugs | CI `FAILURE` or `ERROR` | Red beetles, bug marker |
-| Thirsty | Unresolved threads where someone else spoke last | Cracked dry soil, water-drop marker |
-| Blooming | Review decision `APPROVED` | Full flowers |
-| Growing | Anything else | Green leaves with buds |
+| Budbreak | Draft | Bare trellis, tiny shoots |
+| Pests | CI `FAILURE` or `ERROR` | Red beetles, bug marker |
+| Thirsty | Unresolved threads where someone else spoke last | Cracked dry soil, pale leaves, water-drop marker |
+| Ripe | Review decision `APPROVED` | Lush leaves, ripe bunches |
+| Ripening | Anything else | Green leaves, unripe green grapes |
 
 **Review requests**, based on how long ago your review was requested:
 
 | State | When |
 | --- | --- |
-| Growing (fresh) | Under 24 hours |
+| Fresh | Under 24 hours |
 | Drooping | 1–3 days (amber `!`) |
-| Wilting | 3+ days (red `!`) |
+| Shrivelling | 3+ days (red `!`) |
 | Thirsty | You reviewed before and new commits have arrived since |
-| Blooming | You approved and it's waiting for the author to merge |
+
+PRs you approved leave the vineyard and become bottles (see below), unless new
+commits arrive after your approval, which turns them back into a thirsty vine.
+
+## The cellar
+
+| Item | What | Search |
+| --- | --- | --- |
+| Barrel | Your PR, merged in the last 30 days | `is:pr author:@me is:merged merged:>=<30 days ago>` |
+| Bottle | Someone else's PR whose latest review from you is an approval | `is:pr reviewed-by:@me -author:@me updated:>=<30 days ago>`, plus open PRs you approved that are still waiting to merge |
+
+Each search returns up to 50 PRs. Cellar rows hold 8 items each and are added
+at the back of the area as needed, newest first.
 
 The To review area combines two searches: `review-requested:@me` and
 `reviewed-by:@me -author:@me`. The second search finds PRs that need a re-review
@@ -104,7 +120,7 @@ cached garden stays on screen.
 | --- | --- |
 | **W A S D** / arrows | Walk relative to the screen. Two keys together walk diagonally along the paths. |
 | **Shift** | Run |
-| **E**, **Space**, **Enter** | Tend the highlighted bed (opens it on GitHub) |
+| **E**, **Space**, **Enter** | Open the highlighted vine, barrel or bottle on GitHub |
 | **Tab**, **1**, **2** | Jump to an area's entrance (1 = My PRs, 2 = To review; Tab = the other area) |
 | **L** | List view: the same data as plain links |
 | **R** | Refresh |

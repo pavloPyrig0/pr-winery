@@ -92,9 +92,10 @@ export const C = {
   soilDry: 0x9c7a55,
   soilCrack: 0x6e5236,
   shadow: 0x1b2a14,
-  hoodie: 0x1f4d2b,
-  hoodieDark: 0x163a20,
-  hoodieLight: 0x2c6439,
+  // The winemaker wears a burgundy apron-coat.
+  hoodie: 0x6b1730,
+  hoodieDark: 0x4e0f22,
+  hoodieLight: 0x8a2a46,
   pants: 0x3a3f4a,
   skin: 0xf0c49a,
   hair: 0x5a3a22,

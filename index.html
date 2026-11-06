@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>PR Garden</title>
-    <meta name="description" content="An isometric garden where your GitHub pull requests grow as flower beds." />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 4 30 12 16 20 2 12Z' fill='%2386c75a'/%3E%3Cpath d='M2 12v6l14 8v-6Z' fill='%23557a3a'/%3E%3Cpath d='M30 12v6l-14 8v-6Z' fill='%236b9447'/%3E%3Ccircle cx='16' cy='10' r='4' fill='%23f49ac1'/%3E%3C/svg%3E" />
+    <title>PR Winery</title>
+    <meta name="description" content="An isometric winery where your GitHub pull requests grow as vines, merged PRs age in barrels and approvals get bottled." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 4 30 12 16 20 2 12Z' fill='%2386c75a'/%3E%3Cpath d='M2 12v6l14 8v-6Z' fill='%23557a3a'/%3E%3Cpath d='M30 12v6l-14 8v-6Z' fill='%236b9447'/%3E%3Ccircle cx='16' cy='10' r='4' fill='%236b1730'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -16,11 +16,11 @@
 
       <header class="hud">
         <div class="hud-garden">
-          <h1 id="garden-name">PR Garden</h1>
+          <h1 id="garden-name">PR Winery</h1>
           <div class="hud-meta">
             <span id="season-label">Spring</span>
             <span class="dot" aria-hidden="true">·</span>
-            <div class="health" role="meter" aria-label="Garden health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" id="health">
+            <div class="health" role="meter" aria-label="Vineyard health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" id="health">
               <div class="health-fill" id="health-fill"></div>
             </div>
             <span id="health-label">100%</span>
@@ -51,10 +51,10 @@
       <div id="status" class="status" role="status" aria-live="polite" hidden></div>
 
       <footer class="hints" aria-hidden="true">
-        <span><kbd>WASD</kbd> move</span><span><kbd>Shift</kbd> run</span><span><kbd>E</kbd> tend</span><span><kbd>L</kbd> list</span><span><kbd>?</kbd> help</span>
+        <span><kbd>WASD</kbd> move</span><span><kbd>Shift</kbd> run</span><span><kbd>E</kbd> open</span><span><kbd>L</kbd> list</span><span><kbd>?</kbd> help</span>
       </footer>
 
-      <aside id="panel" class="panel" aria-label="Garden details">
+      <aside id="panel" class="panel" aria-label="Winery details">
         <button id="panel-toggle" class="panel-toggle" aria-expanded="true" aria-controls="panel-body" title="Collapse panel (\)">
           <span aria-hidden="true">›</span><span class="sr-only">Toggle side panel</span>
         </button>
@@ -72,7 +72,7 @@
       <div id="list-view" class="overlay" role="dialog" aria-modal="true" aria-labelledby="list-title" hidden>
         <div class="overlay-card wide">
           <div class="overlay-head">
-            <h2 id="list-title">All beds</h2>
+            <h2 id="list-title">All vines, barrels and bottles</h2>
             <button class="btn ghost close" data-close aria-label="Close list view">Esc</button>
           </div>
           <div id="list-body"></div>
@@ -88,24 +88,29 @@
           <dl class="keys">
             <dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / arrows</dt><dd>Walk (two keys walk diagonally along the paths)</dd>
             <dt><kbd>Shift</kbd></dt><dd>Run</dd>
-            <dt><kbd>E</kbd> <kbd>Space</kbd> <kbd>Enter</kbd></dt><dd>Tend the highlighted bed (opens it on GitHub)</dd>
+            <dt><kbd>E</kbd> <kbd>Space</kbd> <kbd>Enter</kbd></dt><dd>Open the highlighted vine, barrel or bottle on GitHub</dd>
             <dt><kbd>Tab</kbd> <kbd>1</kbd> <kbd>2</kbd></dt><dd>Jump to an area entrance: 1 My PRs, 2 To review (Tab goes to the other one)</dd>
             <dt><kbd>L</kbd></dt><dd>List view</dd>
             <dt><kbd>R</kbd></dt><dd>Refresh from GitHub</dd>
             <dt><kbd>\</kbd></dt><dd>Collapse the side panel</dd>
             <dt><kbd>?</kbd></dt><dd>This help</dd>
             <dt><kbd>Esc</kbd></dt><dd>Close overlays</dd>
-            <dt>Mouse</dt><dd>Click to walk, hover a bed for details, wheel to zoom</dd>
+            <dt>Mouse</dt><dd>Click to walk, hover a vine for details, wheel to zoom</dd>
           </dl>
-          <h3>Bed states</h3>
+          <h3>Vine states</h3>
           <ul class="legend">
-            <li><span class="badge grey">Seedling</span> draft</li>
-            <li><span class="badge red">Bugs</span> CI failing</li>
+            <li><span class="badge grey">Budbreak</span> draft</li>
+            <li><span class="badge red">Pests</span> CI failing</li>
             <li><span class="badge blue">Thirsty</span> threads to answer / re-review</li>
-            <li><span class="badge green">Growing</span> in review</li>
-            <li><span class="badge green">Blooming</span> approved</li>
+            <li><span class="badge green">Ripening</span> in review</li>
+            <li><span class="badge green">Ripe</span> approved</li>
             <li><span class="badge amber">Drooping</span> review waiting 1–3 days</li>
-            <li><span class="badge red">Wilting</span> review waiting 3+ days</li>
+            <li><span class="badge red">Shrivelling</span> review waiting 3+ days</li>
+          </ul>
+          <h3>Cellar</h3>
+          <ul class="legend">
+            <li><span class="badge green">Barrel</span> one of your PRs merged in the last 30 days</li>
+            <li><span class="badge blue">Bottle</span> a PR you approved (corked while open, wax-sealed once merged)</li>
           </ul>
         </div>
       </div>
@@ -120,7 +125,7 @@
           <input id="token" name="token" type="password" autocomplete="off" spellcheck="false" placeholder="ghp_…" />
           <p class="note">
             Create a <a href="https://github.com/settings/tokens/new?scopes=repo,read:org&amp;description=PR%20Garden" target="_blank" rel="noopener">personal access token (classic)</a>
-            with the <strong>repo</strong> and <strong>read:org</strong> scopes. PR Garden only reads data,
+            with the <strong>repo</strong> and <strong>read:org</strong> scopes. PR Winery only reads data,
             but classic tokens can't be limited to read-only, so keep it private and set an expiry.
             It is stored only in this browser's localStorage and sent only to api.github.com.
           </p>
@@ -156,7 +161,7 @@
           <button data-keys="KeyS KeyA" class="down-left" tabindex="-1">↙</button>
           <button data-keys="KeyS KeyD" class="down-right" tabindex="-1">↘</button>
         </div>
-        <button class="tend-btn" id="touch-tend" tabindex="-1">Tend</button>
+        <button class="tend-btn" id="touch-tend" tabindex="-1">Open</button>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

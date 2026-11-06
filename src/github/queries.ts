@@ -40,8 +40,21 @@ fragment ReviewFields on PullRequest {
   }
 }`;
 
+/** Light fields for cellar items (barrels and bottles). */
+export const CELLAR_FIELDS = /* GraphQL */ `
+fragment CellarFields on PullRequest {
+  id
+  title
+  url
+  number
+  state
+  mergedAt
+  author { login }
+  repository { nameWithOwner }
+}`;
+
 export const GARDEN_QUERY = /* GraphQL */ `
-query Garden($mine: String!, $requested: String!, $reviewed: String!, $harvest: String!, $compost: String!) {
+query Garden($mine: String!, $requested: String!, $reviewed: String!, $barrels: String!, $approved: String!, $compost: String!) {
   viewer { login }
   rateLimit { remaining resetAt cost }
   mine: search(query: $mine, type: ISSUE, first: 50) {
@@ -53,11 +66,17 @@ query Garden($mine: String!, $requested: String!, $reviewed: String!, $harvest: 
   reviewed: search(query: $reviewed, type: ISSUE, first: 50) {
     nodes { ...PrFields ...ReviewFields }
   }
-  harvest: search(query: $harvest, type: ISSUE, first: 1) { issueCount }
+  barrels: search(query: $barrels, type: ISSUE, first: 50) {
+    nodes { ...CellarFields }
+  }
+  approved: search(query: $approved, type: ISSUE, first: 50) {
+    nodes { ...CellarFields viewerLatestReview { state submittedAt } }
+  }
   compost: search(query: $compost, type: ISSUE, first: 1) { issueCount }
 }
 ${PR_FIELDS}
-${REVIEW_FIELDS}`;
+${REVIEW_FIELDS}
+${CELLAR_FIELDS}`;
 
 function isoDate(ms: number): string {
   return new Date(ms).toISOString().slice(0, 10);
@@ -70,7 +89,10 @@ export function searchStrings(now: number) {
     requested: 'is:pr is:open review-requested:@me archived:false',
     // PRs I already reviewed: needed for "re-review" and "approved, waiting to merge".
     reviewed: 'is:pr is:open reviewed-by:@me -author:@me archived:false',
-    harvest: `is:pr author:@me is:merged merged:>=${isoDate(now - 7 * day)}`,
+    // Barrels: my PRs merged in the last 30 days.
+    barrels: `is:pr author:@me is:merged merged:>=${isoDate(now - 30 * day)}`,
+    // Bottles: PRs by others I reviewed recently; kept when my latest review is an approval.
+    approved: `is:pr reviewed-by:@me -author:@me archived:false updated:>=${isoDate(now - 30 * day)}`,
     compost: `is:pr author:@me is:closed is:unmerged closed:>=${isoDate(now - 30 * day)}`,
   };
 }
