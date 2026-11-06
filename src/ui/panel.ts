@@ -62,7 +62,7 @@ export class Panel {
     const cardHtml = s.highlighted
       ? renderItemCard(s.highlighted.item, s.highlighted.garden, s.now)
       : renderSummaryCard({
-          title: s.area ? AREA_LABEL[s.area] : 'PR Garden',
+          title: s.area ? AREA_LABEL[s.area] : 'PR Winery',
           summaries: s.summaries,
           status: s.status,
           fetchedAt: s.fetchedAt,

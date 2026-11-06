@@ -1,8 +1,8 @@
-// Raised 2×2 flower beds: stone curb, soil, border flowers, state-driven plants.
+// Raised 2×2 vine beds: stone curb, soil, two trellis rows of state-driven grapevines.
 import { Container, Graphics } from 'pixi.js';
 import type { BedState } from '../types';
 import { polyPoints, toScreen } from './iso';
-import { BORDER_PALETTES, C } from './palette';
+import { C } from './palette';
 import { range, rngFor, type Rng } from './rng';
 import { mixColor } from './drawGround';
 
@@ -23,20 +23,6 @@ export function leaf(g: Graphics, x: number, y: number, angle: number, len: numb
   g.moveTo(x, y).lineTo(mx + (tx - x) * 0.3, my + (ty - y) * 0.3).stroke({ width: 0.6, color: mixColor(color, 0x000000, 0.25), alpha: 0.6 });
 }
 
-function flower(g: Graphics, x: number, y: number, r: number, petals: number, petal: number, center: number) {
-  for (let i = 0; i < petals; i++) {
-    const a = (i / petals) * Math.PI * 2;
-    g.ellipse(x + Math.cos(a) * r * 0.75, y + Math.sin(a) * r * 0.5, r * 0.62, r * 0.42).fill(petal);
-  }
-  g.circle(x, y, r * 0.38).fill(center);
-}
-
-function stem(g: Graphics, x: number, y: number, tx: number, ty: number, bend: number, color: number) {
-  g.moveTo(x, y)
-    .quadraticCurveTo(x + bend, (y + ty) / 2, tx, ty)
-    .stroke({ width: 1.3, color, cap: 'round' });
-}
-
 function beetle(g: Graphics, x: number, y: number) {
   g.ellipse(x, y, 2.6, 2).fill(0xc8312b);
   g.moveTo(x, y - 2).lineTo(x, y + 2).stroke({ width: 0.5, color: 0x1a1a1a });
@@ -45,74 +31,125 @@ function beetle(g: Graphics, x: number, y: number) {
   g.circle(x, y - 2.2, 0.9).fill(0x1a1a1a);
 }
 
-/** One plant at local (x, y) in screen px, drawn for the given state. */
-function plant(g: Graphics, x: number, y: number, state: BedState, rng: Rng, accent: number) {
-  const tilt = range(rng, -0.25, 0.25);
-  switch (state) {
-    case 'seedling': {
-      g.moveTo(x, y).lineTo(x, y - 3).stroke({ width: 1, color: 0x7ab648 });
-      leaf(g, x, y - 3, -Math.PI / 2 - 0.9, 4, 1.6, 0x8fcf5a);
-      leaf(g, x, y - 3, -Math.PI / 2 + 0.9, 4, 1.6, 0x7ec24c);
-      return;
+/** Grape varieties; each bed rotates through them. */
+const GRAPES = [
+  { name: 'cabernet', ripe: [0x4a1f5c, 0x5e2a72, 0x3a1648] },
+  { name: 'pinot', ripe: [0x6b1730, 0x82203d, 0x561226] },
+  { name: 'riesling', ripe: [0xbfc85a, 0xd2d66e, 0xa9b448] },
+  { name: 'syrah', ripe: [0x2d2a4a, 0x3b3760, 0x22203a] },
+];
+
+/** A grape leaf: three overlapping lobes. */
+function vineLeaf(g: Graphics, x: number, y: number, size: number, color: number) {
+  g.circle(x, y, size * 0.62).fill(color);
+  g.circle(x - size * 0.5, y - size * 0.25, size * 0.45).fill(color);
+  g.circle(x + size * 0.5, y - size * 0.25, size * 0.45).fill(color);
+  g.moveTo(x, y + size * 0.4).lineTo(x, y - size * 0.3).stroke({ width: 0.5, color: mixColor(color, 0x000000, 0.3), alpha: 0.6 });
+}
+
+/** Hanging bunch of grapes from (x, y) downwards. */
+function bunch(g: Graphics, x: number, y: number, size: number, colors: number[], rng: Rng, shrivelled = false) {
+  g.moveTo(x, y - 2).lineTo(x, y + 1).stroke({ width: 0.8, color: 0x5a4a2a });
+  const r = shrivelled ? size * 0.32 : size * 0.42;
+  const rows = [3, 3, 2, 1];
+  rows.forEach((n, j) => {
+    for (let i = 0; i < n; i++) {
+      const gx = x + (i - (n - 1) / 2) * size * 0.78 + range(rng, -0.3, 0.3);
+      const gy = y + 2 + j * size * 0.7;
+      g.circle(gx, gy, r).fill(colors[Math.floor(rng() * colors.length)]);
     }
+  });
+  if (!shrivelled) g.circle(x - size * 0.5, y + 2 + size * 0.2, r * 0.35).fill({ color: 0xffffff, alpha: 0.35 });
+}
+
+interface VineLook {
+  leaves: number[];
+  leafSize: number;
+  density: number;
+  grapes: number[] | null;
+  bunchSize: number;
+  bunches: number;
+  shrivelled?: boolean;
+  droop?: boolean;
+}
+
+function vineLook(state: BedState, ripe: number[]): VineLook {
+  const green = [0x3f8a3a, 0x58a845, 0x4f9e40];
+  const unripe = [0x9ccf6a, 0x8cc25a, 0xb2da7e];
+  switch (state) {
+    case 'seedling':
+      return { leaves: [0x8fcf5a, 0x7ec24c], leafSize: 3, density: 0, grapes: null, bunchSize: 0, bunches: 0 };
     case 'growing':
     case 'bugs':
-    case 'thirsty': {
-      const pale = state === 'thirsty';
-      const dark = pale ? 0x7fa05a : 0x3f8a3a;
-      const mid = pale ? 0x9ab86c : 0x5aac46;
-      const light = pale ? 0xb5cc84 : 0x7cc65a;
-      const h = pale ? range(rng, 9, 12) : range(rng, 12, 16);
-      stem(g, x, y, x + tilt * 6, y - h, tilt * 4, dark);
-      for (let i = 0; i < 4; i++) {
-        const side = i % 2 ? 1 : -1;
-        const ly = y - h * (0.25 + i * 0.17);
-        leaf(g, x + tilt * 6 * (i / 4), ly, -Math.PI / 2 + side * range(rng, 0.8, 1.3), range(rng, 5, 7), 2.2, i % 2 ? mid : light);
-      }
-      leaf(g, x, y, -Math.PI / 2 - 1.3, 6, 2.4, dark);
-      leaf(g, x, y, -Math.PI / 2 + 1.3, 6, 2.4, mid);
-      // Closed buds with a hint of colour.
-      const bx = x + tilt * 6;
-      const by = y - h;
-      g.ellipse(bx, by, 2.2, 3).fill(mid);
-      g.ellipse(bx, by - 1.6, 1.4, 1.4).fill({ color: accent, alpha: pale ? 0.4 : 0.85 });
-      if (state === 'bugs' && rng() < 0.7) beetle(g, x + range(rng, -4, 4), y - h * range(rng, 0.3, 0.7));
-      return;
+      return { leaves: green, leafSize: 5, density: 6, grapes: unripe, bunchSize: 2.6, bunches: 2 };
+    case 'thirsty':
+      return { leaves: [0x8fae62, 0x9ab86c, 0xa9c47a], leafSize: 4.2, density: 4, grapes: unripe, bunchSize: 2.2, bunches: 1 };
+    case 'blooming':
+      return { leaves: green, leafSize: 5.4, density: 7, grapes: ripe, bunchSize: 3.2, bunches: 3 };
+    case 'drooping':
+      return { leaves: [0xc9b84a, 0xb5a63e, 0x9fae4a], leafSize: 4.4, density: 4, grapes: ripe.map((c) => mixColor(c, 0x8a7a4a, 0.35)), bunchSize: 2.6, bunches: 2, droop: true };
+    case 'wilting':
+      return { leaves: [0x8a6a3a, 0x9c7a45, 0x7a5a32], leafSize: 3.6, density: 3, grapes: [0x3a2a24, 0x4a3226], bunchSize: 2.4, bunches: 2, shrivelled: true, droop: true };
+  }
+}
+
+/** One trellis row along world x at local y = `wy`, with vines for `state`. */
+function trellisRow(g: Graphics, wy: number, H: number, state: BedState, ripe: number[], rng: Rng) {
+  const look = vineLook(state, ripe);
+  const a = toScreen(-0.78, wy);
+  const b = toScreen(0.78, wy);
+  const top = 26;
+  const low = 14;
+  // Posts.
+  for (const p of [a, b]) {
+    g.rect(p.x - 1.6, p.y - H - top - 2, 3.2, top + 2).fill(C.woodDark);
+    g.rect(p.x - 1.6, p.y - H - top - 2, 1.2, top + 2).fill({ color: 0x000000, alpha: 0.15 });
+  }
+  // Wires.
+  for (const h of [low, top]) g.moveTo(a.x, a.y - H - h).lineTo(b.x, b.y - H - h).stroke({ width: 0.7, color: 0x9a9a8a, alpha: 0.9 });
+  const along = (t: number, h: number) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t - H - h });
+
+  // Trunks.
+  const trunks = [0.2, 0.5, 0.8];
+  for (const t of trunks) {
+    const base = along(t, 0);
+    const h = state === 'seedling' ? 5 : low;
+    const tip = along(t + range(rng, -0.03, 0.03), h);
+    g.moveTo(base.x, base.y).quadraticCurveTo(base.x + range(rng, -2, 2), (base.y + tip.y) / 2, tip.x, tip.y).stroke({ width: 2.2, color: 0x5e3d24, cap: 'round' });
+    if (state === 'seedling') {
+      leaf(g, tip.x, tip.y, -Math.PI / 2 - 0.9, 4, 1.6, look.leaves[0]);
+      leaf(g, tip.x, tip.y, -Math.PI / 2 + 0.9, 4, 1.6, look.leaves[1]);
     }
-    case 'blooming': {
-      const h = range(rng, 14, 19);
-      stem(g, x, y, x + tilt * 6, y - h, tilt * 4, 0x3f8a3a);
-      leaf(g, x, y - 2, -Math.PI / 2 - 1.1, 7, 2.6, 0x4f9e40);
-      leaf(g, x, y - 2, -Math.PI / 2 + 1.1, 7, 2.6, 0x66b64e);
-      leaf(g, x + tilt * 3, y - h * 0.55, -Math.PI / 2 + (rng() < 0.5 ? 1 : -1), 6, 2.2, 0x7cc65a);
-      flower(g, x + tilt * 6, y - h, range(rng, 4.2, 5.4), 5, accent, 0xffe27a);
-      if (rng() < 0.5) flower(g, x - 4, y - h * 0.6, 3.2, 5, mixColor(accent, 0xffffff, 0.25), 0xffe27a);
-      return;
+  }
+  if (state === 'seedling') return;
+
+  // Canes trained along the low wire, foliage climbing to the top wire.
+  g.moveTo(along(0.05, low).x, along(0.05, low).y).lineTo(along(0.95, low).x, along(0.95, low).y).stroke({ width: 1.4, color: 0x6e4a2c });
+  const n = look.density * 2;
+  for (let i = 0; i < n; i++) {
+    const t = 0.06 + (0.88 * i) / Math.max(1, n - 1) + range(rng, -0.03, 0.03);
+    const h = range(rng, low, look.droop ? top - 4 : top + 4);
+    const p = along(t, h);
+    vineLeaf(g, p.x, p.y + (look.droop ? range(rng, 0, 3) : 0), look.leafSize * range(rng, 0.85, 1.15), look.leaves[Math.floor(rng() * look.leaves.length)]);
+  }
+  // Bunches hang just under the low wire, in front of the leaves.
+  if (look.grapes) {
+    for (let i = 0; i < look.bunches; i++) {
+      const t = (i + 0.5) / look.bunches + range(rng, -0.06, 0.06);
+      const p = along(t, low - 1);
+      bunch(g, p.x, p.y + (look.droop ? 2 : 0), look.bunchSize, look.grapes, rng, look.shrivelled);
     }
-    case 'drooping': {
-      const h = range(rng, 10, 13);
-      const bend = (rng() < 0.5 ? -1 : 1) * range(rng, 5, 8);
-      stem(g, x, y, x + bend, y - h * 0.65, bend * 0.9, 0x8f9a3a);
-      leaf(g, x, y - 1, -Math.PI / 2 - 1.5, 6, 2.2, 0xc9b84a);
-      leaf(g, x, y - 1, -Math.PI / 2 + 1.5, 6, 2.2, 0xb5a63e);
-      leaf(g, x + bend * 0.4, y - h * 0.45, bend > 0 ? 0.3 : Math.PI - 0.3, 5, 2, 0xd6c35a);
-      // Bud hanging down.
-      g.ellipse(x + bend, y - h * 0.65 + 2.5, 2, 2.8).fill(0xa5a84a);
-      g.ellipse(x + bend, y - h * 0.65 + 4.5, 1.3, 1.3).fill({ color: accent, alpha: 0.6 });
-      return;
+  }
+  if (state === 'bugs') {
+    for (let i = 0; i < 3; i++) {
+      const p = along(range(rng, 0.1, 0.9), range(rng, low, top));
+      beetle(g, p.x, p.y);
     }
-    case 'wilting': {
-      const h = range(rng, 6, 9);
-      const bend = (rng() < 0.5 ? -1 : 1) * range(rng, 6, 9);
-      stem(g, x, y, x + bend, y - h * 0.3, bend, 0x7a5a32);
-      leaf(g, x, y, Math.PI + 0.2, 6, 1.8, 0x8a6a3a);
-      leaf(g, x, y, -0.2, 6, 1.8, 0x9c7a45);
-      leaf(g, x + bend * 0.5, y - h * 0.3, bend > 0 ? 0.6 : Math.PI - 0.6, 4, 1.4, 0xa88650);
-      // Fallen petals on the soil.
-      for (let i = 0; i < 3; i++) {
-        g.ellipse(x + range(rng, -7, 7), y + range(rng, -2, 3), 1.8, 1).fill({ color: mixColor(accent, 0x8a6a3a, 0.55), alpha: 0.9 });
-      }
-      return;
+  }
+  if (state === 'wilting') {
+    for (let i = 0; i < 4; i++) {
+      const p = toScreen(range(rng, -0.7, 0.7), wy + range(rng, -0.15, 0.2));
+      vineLeaf(g, p.x, p.y - H, 2.4, mixColor(look.leaves[0], 0x6e5236, 0.4));
     }
   }
 }
@@ -125,7 +162,6 @@ export function drawBed(seed: string, state: BedState, paletteIndex: number): Co
   const root = new Container();
   const g = new Graphics();
   const rng = rngFor(seed);
-  const pal = BORDER_PALETTES[paletteIndex % BORDER_PALETTES.length];
   const H = CURB_H;
   // Local world coords: footprint is [-1,1]×[-1,1] around the centre.
   const P = (pts: [number, number][], lift = 0) => polyPoints(pts, lift);
@@ -173,34 +209,10 @@ export function drawBed(seed: string, state: BedState, paletteIndex: number): Co
     }
   }
 
-  // Ring of border flowers along the inner edge of the curb.
-  const ring: [number, number][] = [];
-  const steps = 6;
-  const e = 0.86;
-  for (let i = 0; i < steps; i++) {
-    const t = -e + (2 * e * i) / steps;
-    ring.push([t, -e], [e, t], [-t, e], [-e, -t]);
-  }
-  ring.sort((a, b) => a[0] + a[1] - (b[0] + b[1])); // back to front
-  const dull = state === 'wilting';
-  for (const [wx, wy] of ring) {
-    const s = toScreen(wx, wy);
-    const petal = pal.petals[Math.floor(rng() * pal.petals.length)];
-    const col = dull ? mixColor(petal, 0x9c7a55, 0.6) : petal;
-    leaf(g, s.x, s.y - H, -Math.PI / 2 - 1.2, 4, 1.6, dull ? 0x8f8a4a : 0x4f9e40);
-    leaf(g, s.x, s.y - H, -Math.PI / 2 + 1.2, 4, 1.6, dull ? 0x9c925a : 0x5fae4a);
-    flower(g, s.x + range(rng, -1, 1), s.y - H - 3 - range(rng, 0, 2), range(rng, 2.4, 3.2), 5, col, pal.center);
-  }
-
-  // 3×3 cluster of centre plants, back to front.
-  const cells: [number, number][] = [];
-  for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) cells.push([-0.5 + i * 0.5, -0.5 + j * 0.5]);
-  cells.sort((a, b) => a[0] + a[1] - (b[0] + b[1]));
-  for (const [cx, cy] of cells) {
-    const s = toScreen(cx + range(rng, -0.08, 0.08), cy + range(rng, -0.08, 0.08));
-    const accent = pal.petals[Math.floor(rng() * pal.petals.length)];
-    plant(g, s.x, s.y - H, state, rng, accent);
-  }
+  // Two trellis rows of grapevines, back row first.
+  const ripe = GRAPES[paletteIndex % GRAPES.length].ripe;
+  trellisRow(g, -0.42, H, state, ripe, rng);
+  trellisRow(g, 0.42, H, state, ripe, rng);
 
   root.addChild(g);
   return root;

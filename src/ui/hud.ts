@@ -32,7 +32,7 @@ export class Hud {
   }
 
   render(s: { area: GardenId | null; season: Season; health: number; counts: Record<GardenId, number>; status: Status; mock: boolean }) {
-    $('garden-name').textContent = s.area ? AREA_LABEL[s.area] : 'PR Garden';
+    $('garden-name').textContent = s.area ? AREA_LABEL[s.area] : 'PR Winery';
     $('season-label').textContent = SEASON_LABEL[s.season];
     const pct = Math.round(s.health * 100);
     const fill = $('health-fill');
@@ -77,7 +77,7 @@ export class Hud {
       return;
     }
     const b = itemBadge(item, garden);
-    t.innerHTML = `<span class="badge ${b.tone}">${esc(b.label)}</span><div class="t-title">${esc(itemTitle(item))}</div><div class="t-sub">${esc(item.kind === 'bed' ? `${item.pr.repo} #${item.pr.number}` : item.reason)}</div>`;
+    t.innerHTML = `<span class="badge ${b.tone}">${esc(b.label)}</span><div class="t-title">${esc(itemTitle(item))}</div><div class="t-sub">${esc(item.kind === 'bed' || item.kind === 'barrel' || item.kind === 'bottle' ? `${item.pr.repo} #${item.pr.number}` : item.reason)}</div>`;
     t.hidden = false;
     const w = t.offsetWidth;
     const h = t.offsetHeight;

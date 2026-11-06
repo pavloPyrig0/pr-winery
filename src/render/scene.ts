@@ -8,7 +8,7 @@ import { Ambient } from './ambient';
 import { CURB_H, drawBed } from './drawBed';
 import { drawGround } from './drawGround';
 import { createGardener, SPOUT_TIP, type Facing, type GardenerArt } from './drawGardener';
-import { drawArch, drawFence, drawBasket, drawBench, drawBoat, drawBush, drawCompost, drawMarker, drawTree, drawWeed } from './drawProps';
+import { drawArch, drawFence, drawBarrel, drawBottle, drawBench, drawBoat, drawBush, drawCompost, drawMarker, drawTree, drawWeed } from './drawProps';
 import { depthOf, polyPoints, toScreen } from './iso';
 import { SEASONS } from './palette';
 
@@ -141,8 +141,10 @@ export class Scene {
         return drawBed(item.id, item.state, bedIndex);
       case 'weed':
         return drawWeed(item.id);
-      case 'basket':
-        return drawBasket(item.count);
+      case 'barrel':
+        return drawBarrel(item.id);
+      case 'bottle':
+        return drawBottle(item.id, item.pr.state);
       case 'compost':
         return drawCompost();
     }
@@ -158,16 +160,16 @@ export class Scene {
   private buildKeyHint(): Container {
     const c = new Container();
     const text = new Text({
-      text: 'E · Tend',
+      text: 'E · Open',
       style: { fontFamily: 'Roboto, sans-serif', fontSize: 11, fontWeight: '700', fill: 0xffffff },
       resolution: 3,
     });
     text.anchor.set(0.5);
     const bg = new Graphics();
     const w = text.width + 16;
-    bg.roundRect(-w / 2, -10, w, 20, 8).fill({ color: 0x013a14, alpha: 0.92 });
+    bg.roundRect(-w / 2, -10, w, 20, 8).fill({ color: 0x4a1024, alpha: 0.92 });
     bg.roundRect(-w / 2, -10, w, 20, 8).stroke({ width: 1, color: 0xffffff, alpha: 0.7 });
-    bg.moveTo(-5, 10).lineTo(0, 15).lineTo(5, 10).fill({ color: 0x013a14, alpha: 0.92 });
+    bg.moveTo(-5, 10).lineTo(0, 15).lineTo(5, 10).fill({ color: 0x4a1024, alpha: 0.92 });
     c.addChild(bg, text);
     return c;
   }

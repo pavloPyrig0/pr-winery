@@ -1,4 +1,4 @@
-import type { PullRequest } from '../src/types';
+import type { CellarPr, PullRequest } from '../src/types';
 
 export const NOW = Date.parse('2026-11-05T12:00:00Z');
 export const H = 3_600_000;
@@ -20,6 +20,22 @@ export function makePr(p: Partial<PullRequest> = {}): PullRequest {
     reviewDecision: 'REVIEW_REQUIRED',
     checkState: 'SUCCESS',
     reviewThreads: [],
+    ...p,
+  };
+}
+
+export function makeCellarPr(p: Partial<CellarPr> = {}): CellarPr {
+  seq++;
+  return {
+    id: `cellar-${seq}`,
+    title: `Cellar PR ${seq}`,
+    url: `https://github.com/o/r/pull/${seq}`,
+    number: seq,
+    repo: 'o/r',
+    author: 'me',
+    state: 'MERGED',
+    mergedAt: null,
+    approvedAt: null,
     ...p,
   };
 }

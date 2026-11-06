@@ -1,4 +1,4 @@
-// Info card: the highlighted bed, or a garden summary when nothing is near.
+// Info card: the highlighted vine/barrel/bottle, or an area summary when nothing is near.
 import type { GardenId, GardenItem } from '../types';
 import { formatAge, itemBadge, itemTitle, itemUrl, reviewWaitMs } from '../github/mapping';
 import { esc, timeOfDay } from './dom';
@@ -15,7 +15,10 @@ export function itemMeta(item: GardenItem, garden: GardenId, now: number): strin
     return [`${pr.repo} #${pr.number}`, ...by, age];
   }
   if (item.kind === 'weed') return [item.branch.repo, `last commit ${formatAge(now - Date.parse(item.branch.lastCommitAt))} ago`];
-  return [`${item.count} PR${item.count === 1 ? '' : 's'}`];
+  if (item.kind === 'compost') return [`${item.count} PR${item.count === 1 ? '' : 's'}`];
+  const pr = item.pr;
+  const by = item.kind === 'bottle' && pr.author ? [`by ${pr.author}`] : [];
+  return [`${pr.repo} #${pr.number}`, ...by];
 }
 
 export function renderItemCard(item: GardenItem, garden: GardenId, now: number): string {
@@ -25,7 +28,7 @@ export function renderItemCard(item: GardenItem, garden: GardenId, now: number):
     <div class="title">${esc(itemTitle(item))}</div>
     <div class="meta">${itemMeta(item, garden, now).map((m) => `<span>${esc(m)}</span>`).join('')}</div>
     <p class="reason">${esc(item.reason)}</p>
-    <button class="btn primary block" data-tend="${esc(item.id)}">Tend <kbd>E</kbd></button>
+    <button class="btn primary block" data-tend="${esc(item.id)}">${item.kind === 'bed' || item.kind === 'weed' ? 'Tend' : 'Open'} <kbd>E</kbd></button>
     <p class="sub" style="margin:8px 0 0">or <a href="${esc(itemUrl(item))}" target="_blank" rel="noopener noreferrer">open on GitHub</a></p>`;
 }
 
@@ -39,8 +42,8 @@ export function renderSummaryCard(opts: {
   if (opts.status === 'no-token') {
     return `
       <div class="eyebrow">${esc(opts.title)}</div>
-      <div class="summary">Plant your first seeds</div>
-      <p class="sub">Add a GitHub token and your pull requests will grow here as flower beds.</p>
+      <div class="summary">Plant your first vines</div>
+      <p class="sub">Add a GitHub token and your pull requests will grow here as vines, your merged PRs age in barrels and the PRs you approve get bottled.</p>
       <div class="row" style="margin-top:12px">
         <button class="btn primary" data-open-settings>Add token</button>
         <a class="btn" href="?mock=1">Try mock data</a>
@@ -57,6 +60,6 @@ export function renderSummaryCard(opts: {
   return `
     <div class="eyebrow">${esc(opts.title)}</div>
     ${lines}
-    <p class="sub">Walk up to a bed and press <kbd>E</kbd> to tend it.</p>
+    <p class="sub">Walk up to a vine, barrel or bottle and press <kbd>E</kbd> to open it.</p>
     ${updated ? `<p class="sub">${esc(updated)}</p>` : ''}`;
 }

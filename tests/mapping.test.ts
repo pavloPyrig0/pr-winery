@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { gardenHealth, gardenItems, gardenSummary, marker, myPrState, reviewState, toBed } from '../src/github/mapping';
+import { cellarItems, gardenHealth, gardenItems, gardenSummary, marker, myPrState, reviewState, toBed } from '../src/github/mapping';
 import type { GardenData, ReviewInfo } from '../src/types';
-import { D, H, NOW, makePr } from './fixtures';
+import { D, H, NOW, makeCellarPr as cellar, makePr } from './fixtures';
 
 const review = (agoMs: number, r: Partial<ReviewInfo> = {}): ReviewInfo => ({
   requestedAt: new Date(NOW - agoMs).toISOString(),
@@ -59,9 +59,9 @@ describe('reviewState', () => {
     const pr = makePr({ review: review(5 * D, { myLastReviewState: 'CHANGES_REQUESTED', newCommitsSinceReview: true }) });
     expect(reviewState(pr, NOW)).toBe('thirsty');
   });
-  it('approved by me and no longer requested is blooming', () => {
+  it('approved by me and no longer requested leaves the vineyard (it is bottled)', () => {
     const pr = makePr({ review: review(5 * D, { isRequested: false, myLastReviewState: 'APPROVED' }) });
-    expect(reviewState(pr, NOW)).toBe('blooming');
+    expect(reviewState(pr, NOW)).toBeNull();
   });
   it('reviewed, nothing new, not re-requested → not in the garden', () => {
     const pr = makePr({ review: review(5 * D, { isRequested: false, myLastReviewState: 'COMMENTED' }) });
@@ -87,22 +87,28 @@ describe('markers, health and summary', () => {
     mine: [makePr({ reviewDecision: 'APPROVED' }), makePr({ checkState: 'FAILURE' })],
     review: [makePr({ review: review(4 * D) }), makePr({ review: review(5 * D) }), makePr({ review: review(H) })],
     weeds: [{ repo: 'o/r', name: 'old', url: 'u', lastCommitAt: new Date(NOW - 20 * D).toISOString() }],
-    harvestCount: 2,
-    harvestUrl: 'h',
+    barrels: [cellar({ id: 'm1', mergedAt: new Date(NOW - 3 * D).toISOString() }), cellar({ id: 'm2', mergedAt: new Date(NOW - D).toISOString() })],
+    barrelsUrl: 'h',
+    bottles: [cellar({ id: 'b1', author: 'tom', state: 'OPEN', approvedAt: new Date(NOW - D).toISOString() })],
     compostCount: 0,
     compostUrl: 'c',
     fetchedAt: new Date(NOW).toISOString(),
     warnings: [],
   };
 
-  it('my garden includes beds, weeds, basket and compost, most urgent first', () => {
+  it('my vineyard includes vines, weeds, one barrel per merged PR and the pomace heap', () => {
     const items = gardenItems(data, 'mine', NOW);
-    expect(items.map((i) => i.kind)).toEqual(['bed', 'weed', 'bed', 'basket', 'compost']);
+    expect(items.map((i) => i.kind)).toEqual(['bed', 'weed', 'bed', 'barrel', 'barrel', 'compost']);
   });
-  it('review garden has only beds', () => {
+  it('barrels are newest first', () => {
+    const barrels = cellarItems(data.barrels, 'barrel', NOW);
+    expect(barrels.map((b) => b.pr.id)).toEqual(['m2', 'm1']);
+  });
+  it('review vineyard has vines plus one bottle per approved PR', () => {
     const items = gardenItems(data, 'review', NOW);
-    expect(items.every((i) => i.kind === 'bed')).toBe(true);
-    expect(gardenSummary(items, 'review')).toBe('2 beds are wilting · tend the oldest first');
+    expect(items.filter((i) => i.kind === 'bed')).toHaveLength(3);
+    expect(items.filter((i) => i.kind === 'bottle').map((i) => i.id)).toEqual(['bottle:b1']);
+    expect(gardenSummary(items, 'review')).toBe('2 vines are shrivelling · tend the oldest first');
   });
   it('orders equal states oldest first', () => {
     const items = gardenItems(data, 'review', NOW);

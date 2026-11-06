@@ -1,5 +1,5 @@
 // Thin GitHub GraphQL client with friendly error kinds.
-import type { GardenData, PullRequest, ReviewInfo, StaleBranch } from '../types';
+import type { CellarPr, GardenData, PullRequest, ReviewInfo, StaleBranch } from '../types';
 import { DAY } from './mapping';
 import { GARDEN_QUERY, searchStrings, searchUrl, weedsQuery, weedsVariables } from './queries';
 
@@ -87,13 +87,70 @@ interface RawPr {
   };
 }
 
+interface RawCellarPr {
+  id: string;
+  title: string;
+  url: string;
+  number: number;
+  state: CellarPr['state'];
+  mergedAt: string | null;
+  author: { login: string } | null;
+  repository: { nameWithOwner: string };
+  viewerLatestReview?: { state: ReviewInfo['myLastReviewState']; submittedAt: string | null } | null;
+}
+
+export function normalizeCellarPr(raw: RawCellarPr): CellarPr {
+  return {
+    id: raw.id,
+    title: raw.title,
+    url: raw.url,
+    number: raw.number,
+    repo: raw.repository.nameWithOwner,
+    author: raw.author?.login ?? null,
+    state: raw.state,
+    mergedAt: raw.mergedAt ?? null,
+    approvedAt: raw.viewerLatestReview?.state === 'APPROVED' ? raw.viewerLatestReview.submittedAt : null,
+  };
+}
+
+/**
+ * Bottles: PRs whose latest review from me is an approval. Combines the
+ * recent "reviewed by me" search with open PRs I approved that are still
+ * waiting to merge (they may be older than the search window).
+ */
+export function approvedBottles(rawApproved: RawCellarPr[], reviewOpen: PullRequest[]): CellarPr[] {
+  const out = new Map<string, CellarPr>();
+  for (const raw of rawApproved) {
+    if (raw.viewerLatestReview?.state !== 'APPROVED') continue;
+    out.set(raw.id, normalizeCellarPr(raw));
+  }
+  for (const pr of reviewOpen) {
+    const r = pr.review;
+    if (!r || r.isRequested || r.myLastReviewState !== 'APPROVED' || r.newCommitsSinceReview) continue;
+    if (out.has(pr.id)) continue;
+    out.set(pr.id, {
+      id: pr.id,
+      title: pr.title,
+      url: pr.url,
+      number: pr.number,
+      repo: pr.repo,
+      author: pr.author,
+      state: 'OPEN',
+      mergedAt: null,
+      approvedAt: r.myLastReviewAt,
+    });
+  }
+  return [...out.values()];
+}
+
 interface RawGarden {
   viewer: { login: string };
   rateLimit: { remaining: number; resetAt: string; cost: number } | null;
   mine: { nodes: (RawPr | null)[] };
   requested: { nodes: (RawPr | null)[] };
   reviewed: { nodes: (RawPr | null)[] };
-  harvest: { issueCount: number };
+  barrels: { nodes: (RawCellarPr | null)[] };
+  approved: { nodes: (RawCellarPr | null)[] };
   compost: { issueCount: number };
 }
 
@@ -173,6 +230,7 @@ export async function fetchGarden(token: string, weedRepos: string[], now = Date
   const { data, warnings } = await graphql<RawGarden>(token, GARDEN_QUERY, q, fetchImpl);
   const viewer = data.viewer.login;
   const nodes = (list: (RawPr | null)[]) => list.filter((n): n is RawPr => !!n && !!n.id);
+  const cellarNodes = (list: (RawCellarPr | null)[]) => list.filter((n): n is RawCellarPr => !!n && !!n.id);
 
   const mine = nodes(data.mine.nodes).map((n) => normalizePr(n, viewer, null));
   const requested = nodes(data.requested.nodes).map((n) => normalizePr(n, viewer, true));
@@ -200,8 +258,9 @@ export async function fetchGarden(token: string, weedRepos: string[], now = Date
     mine,
     review: [...requested, ...reviewedOnly],
     weeds,
-    harvestCount: data.harvest.issueCount,
-    harvestUrl: searchUrl(q.harvest),
+    barrels: cellarNodes(data.barrels?.nodes ?? []).map(normalizeCellarPr),
+    barrelsUrl: searchUrl(q.barrels),
+    bottles: approvedBottles(cellarNodes(data.approved?.nodes ?? []), reviewedOnly),
     compostCount: data.compost.issueCount,
     compostUrl: searchUrl(q.compost),
     fetchedAt: new Date(now).toISOString(),

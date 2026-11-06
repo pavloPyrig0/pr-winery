@@ -1,8 +1,10 @@
-// Pure functions that turn GitHub facts into garden states. No I/O here.
+// Pure functions that turn GitHub facts into vineyard states. No I/O here.
 import type {
   BadgeTone,
-  BasketItem,
   BedItem,
+  CellarItem,
+  CellarPr,
+  CompostItem,
   BedState,
   GardenData,
   GardenId,
@@ -47,14 +49,15 @@ export function reviewWaitMs(pr: PullRequest, now: number): number {
 }
 
 /**
- * State for a PR in the review garden, or null when the ball is in the
- * author's court (I reviewed, nothing new, and I'm not re-requested).
+ * State for a PR in the review vineyard, or null when the ball is in the
+ * author's court (I reviewed, nothing new, and I'm not re-requested). PRs I
+ * approved come back as bottles instead (see `toBottle`).
  */
 export function reviewState(pr: PullRequest, now: number): BedState | null {
   const r = pr.review;
   const reviewedBefore = !!r?.myLastReviewState && r.myLastReviewState !== 'PENDING';
   if (reviewedBefore && r!.newCommitsSinceReview) return 'thirsty';
-  if (r?.myLastReviewState === 'APPROVED' && !r.isRequested) return 'blooming';
+  // Approved by me: it's bottled and lives in the cellar, not on the vine.
   if (r && !r.isRequested) return null;
   const wait = reviewWaitMs(pr, now);
   if (wait < DAY) return 'growing';
@@ -115,19 +118,19 @@ export function badgeTone(state: BedState): BadgeTone {
 export function stateLabel(state: BedState, garden: GardenId): string {
   switch (state) {
     case 'seedling':
-      return 'Seedling · draft';
+      return 'Budbreak · draft';
     case 'bugs':
-      return 'Bugs · CI failing';
+      return 'Pests · CI failing';
     case 'thirsty':
       return garden === 'mine' ? 'Thirsty · comments to answer' : 'Thirsty · re-review';
     case 'blooming':
-      return garden === 'mine' ? 'Blooming · approved' : 'Blooming · you approved';
+      return garden === 'mine' ? 'Ripe · approved' : 'Ripe · you approved';
     case 'growing':
-      return garden === 'mine' ? 'Growing · in review' : 'Fresh · new request';
+      return garden === 'mine' ? 'Ripening · in review' : 'Fresh · new request';
     case 'drooping':
       return 'Drooping · waiting 1–3 days';
     case 'wilting':
-      return 'Wilting · waiting 3+ days';
+      return 'Shrivelling · waiting 3+ days';
   }
 }
 
@@ -157,7 +160,7 @@ function reasonFor(pr: PullRequest, state: BedState, garden: GardenId, viewer: s
       return `${n} unresolved thread${n === 1 ? '' : 's'} waiting on you`;
     }
     case 'blooming':
-      return 'Approved · ready to merge';
+      return 'Approved · ready to merge and barrel';
     default:
       return `Open for ${formatAge(now - Date.parse(pr.createdAt))}`;
   }
@@ -189,6 +192,34 @@ export function toWeed(b: StaleBranch, now: number): WeedItem {
   };
 }
 
+function byNewest(a: string | null, b: string | null): number {
+  return Date.parse(b ?? '1970-01-01') - Date.parse(a ?? '1970-01-01');
+}
+
+export function toBarrel(pr: CellarPr, now: number): CellarItem {
+  return {
+    kind: 'barrel',
+    id: `barrel:${pr.id}`,
+    pr,
+    urgency: 0,
+    reason: pr.mergedAt ? `Merged ${formatAge(now - Date.parse(pr.mergedAt))} ago · ageing in the cellar` : 'Merged',
+  };
+}
+
+export function toBottle(pr: CellarPr, now: number): CellarItem {
+  const when = pr.approvedAt ? `Approved ${formatAge(now - Date.parse(pr.approvedAt))} ago` : 'Approved by you';
+  const tail = pr.state === 'MERGED' ? 'merged and sealed' : pr.state === 'CLOSED' ? 'closed unmerged' : 'waiting for the author to merge';
+  return { kind: 'bottle', id: `bottle:${pr.id}`, pr, urgency: 0, reason: `${when} · ${tail}` };
+}
+
+/** Barrels or bottles, newest first (stable for layout). */
+export function cellarItems(prs: CellarPr[], kind: 'barrel' | 'bottle', now: number): CellarItem[] {
+  const key = (p: CellarPr) => (kind === 'barrel' ? p.mergedAt : p.approvedAt);
+  return [...prs]
+    .sort((a, b) => byNewest(key(a), key(b)) || a.id.localeCompare(b.id))
+    .map((p) => (kind === 'barrel' ? toBarrel(p, now) : toBottle(p, now)));
+}
+
 /** All interactable items for a garden, most urgent first. */
 export function gardenItems(data: GardenData, garden: GardenId, now: number): GardenItem[] {
   const prs = garden === 'mine' ? data.mine : data.review;
@@ -199,15 +230,8 @@ export function gardenItems(data: GardenData, garden: GardenId, now: number): Ga
   }
   if (garden === 'mine') {
     for (const w of data.weeds) items.push(toWeed(w, now));
-    const basket: BasketItem = {
-      kind: 'basket',
-      id: 'basket',
-      url: data.harvestUrl,
-      count: data.harvestCount,
-      urgency: 0,
-      reason: `${data.harvestCount} merged this week`,
-    };
-    const compost: BasketItem = {
+    items.push(...cellarItems(data.barrels ?? [], 'barrel', now));
+    const compost: CompostItem = {
       kind: 'compost',
       id: 'compost',
       url: data.compostUrl,
@@ -215,7 +239,9 @@ export function gardenItems(data: GardenData, garden: GardenId, now: number): Ga
       urgency: 0,
       reason: `${data.compostCount} closed without merging (30 days)`,
     };
-    items.push(basket, compost);
+    items.push(compost);
+  } else {
+    items.push(...cellarItems(data.bottles ?? [], 'bottle', now));
   }
   return sortByUrgency(items);
 }
@@ -227,21 +253,25 @@ export function sortByUrgency<T extends { urgency: number; id: string }>(items: 
 export function itemUrl(item: GardenItem): string {
   if (item.kind === 'bed') return item.pr.url;
   if (item.kind === 'weed') return item.branch.url;
-  return item.url;
+  if (item.kind === 'compost') return item.url;
+  return item.pr.url;
 }
 
 export function itemTitle(item: GardenItem): string {
   if (item.kind === 'bed') return item.pr.title;
   if (item.kind === 'weed') return item.branch.name;
-  return item.kind === 'basket' ? 'Harvest basket' : 'Compost heap';
+  if (item.kind === 'compost') return 'Pomace heap';
+  return item.pr.title;
 }
 
 export function itemBadge(item: GardenItem, garden: GardenId): { tone: BadgeTone; label: string } {
   if (item.kind === 'bed') return { tone: badgeTone(item.state), label: stateLabel(item.state, garden) };
   if (item.kind === 'weed') return { tone: 'amber', label: 'Weed · stale branch' };
-  return item.kind === 'basket'
-    ? { tone: 'green', label: 'Harvest · merged' }
-    : { tone: 'grey', label: 'Compost · closed' };
+  if (item.kind === 'barrel') return { tone: 'green', label: 'Barrel · merged' };
+  if (item.kind === 'bottle') {
+    return item.pr.state === 'OPEN' ? { tone: 'blue', label: 'Bottle · you approved' } : { tone: 'green', label: 'Bottle · approved, sealed' };
+  }
+  return { tone: 'grey', label: 'Pomace · closed' };
 }
 
 export function itemNeedsCare(item: GardenItem): boolean {
@@ -271,12 +301,12 @@ export function gardenHealth(items: GardenItem[]): number {
 export function gardenSummary(items: GardenItem[], garden: GardenId): string {
   const beds = items.filter((i): i is BedItem => i.kind === 'bed');
   if (beds.length === 0) {
-    return garden === 'mine' ? 'No open PRs · the soil is resting' : 'No reviews waiting · enjoy the quiet';
+    return garden === 'mine' ? 'No open PRs · the vines are resting' : 'No reviews waiting · pour yourself a glass';
   }
   const count = (s: BedState) => beds.filter((b) => b.state === s).length;
-  const plural = (n: number, w: string) => `${n} bed${n === 1 ? ' is' : 's are'} ${w}`;
-  if (count('wilting')) return `${plural(count('wilting'), 'wilting')} · tend the oldest first`;
-  if (count('bugs')) return `${plural(count('bugs'), 'buggy')} · fix the failing checks`;
+  const plural = (n: number, w: string) => `${n} vine${n === 1 ? ' is' : 's are'} ${w}`;
+  if (count('wilting')) return `${plural(count('wilting'), 'shrivelling')} · tend the oldest first`;
+  if (count('bugs')) return `${plural(count('bugs'), 'pest-ridden')} · fix the failing checks`;
   if (count('thirsty'))
     return garden === 'mine'
       ? `${plural(count('thirsty'), 'thirsty')} · answer open threads`
@@ -284,5 +314,5 @@ export function gardenSummary(items: GardenItem[], garden: GardenId): string {
   if (count('drooping')) return `${plural(count('drooping'), 'drooping')} · review them today`;
   const weeds = items.filter((i) => i.kind === 'weed').length;
   if (weeds) return `${weeds} weed${weeds === 1 ? '' : 's'} · clean up stale branches`;
-  return `All ${beds.length} bed${beds.length === 1 ? '' : 's'} look healthy`;
+  return `All ${beds.length} vine${beds.length === 1 ? '' : 's'} look healthy`;
 }

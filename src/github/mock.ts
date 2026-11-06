@@ -1,5 +1,5 @@
 // Mock data for ?mock=1: covers every bed state in both gardens.
-import type { GardenData, PullRequest, ReviewInfo } from '../types';
+import type { CellarPr, GardenData, PullRequest, ReviewInfo } from '../types';
 import { DAY, HOUR } from './mapping';
 
 const ME = 'you';
@@ -33,6 +33,23 @@ function review(requestedAgoMs: number, extra: Partial<ReviewInfo> = {}): Review
     ...extra,
   };
 }
+
+function cellar(n: number, repo: string, title: string, p: Partial<CellarPr>): CellarPr {
+  return {
+    id: `mock-cellar-${repo}-${n}`,
+    title,
+    url: `https://github.com/${repo}/pull/${n}`,
+    number: n,
+    repo,
+    author: ME,
+    state: 'MERGED',
+    mergedAt: null,
+    approvedAt: null,
+    ...p,
+  };
+}
+
+const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
 
 export function mockData(): GardenData {
   const now = Date.now();
@@ -74,8 +91,23 @@ export function mockData(): GardenData {
       { repo: 'acme/web', name: 'spike/old-carousel', url: 'https://github.com/acme/web/tree/spike/old-carousel', lastCommitAt: new Date(now - 40 * DAY).toISOString() },
       { repo: 'acme/api', name: 'fix/legacy-auth', url: 'https://github.com/acme/api/tree/fix/legacy-auth', lastCommitAt: new Date(now - 21 * DAY).toISOString() },
     ],
-    harvestCount: 4,
-    harvestUrl: 'https://github.com/pulls?q=is%3Apr+author%3A%40me+is%3Amerged',
+    barrels: [
+      cellar(405, 'acme/web', 'Swap moment for date-fns', { mergedAt: ago(1 * DAY) }),
+      cellar(401, 'acme/web', 'Cache listing thumbnails', { mergedAt: ago(3 * DAY) }),
+      cellar(84, 'acme/api', 'Add request IDs to logs', { mergedAt: ago(5 * DAY) }),
+      cellar(80, 'acme/api', 'Drop unused /v1 routes', { mergedAt: ago(9 * DAY) }),
+      cellar(21, 'acme/design-tokens', 'Rename spacing scale', { mergedAt: ago(12 * DAY) }),
+      cellar(398, 'acme/web', 'Upgrade to Vite 6', { mergedAt: ago(20 * DAY) }),
+      cellar(77, 'acme/api', 'Healthcheck endpoint', { mergedAt: ago(27 * DAY) }),
+    ],
+    barrelsUrl: 'https://github.com/pulls?q=is%3Apr+author%3A%40me+is%3Amerged',
+    bottles: [
+      cellar(95, 'acme/api', 'Rate-limit search endpoint', { author: 'tom', state: 'OPEN', approvedAt: ago(DAY) }),
+      cellar(1180, 'acme/mobile', 'Dark splash screen', { author: 'lina', mergedAt: ago(2 * DAY), approvedAt: ago(3 * DAY) }),
+      cellar(426, 'acme/web', 'Fix map zoom on Safari', { author: 'maria', mergedAt: ago(4 * DAY), approvedAt: ago(4 * DAY) }),
+      cellar(70, 'acme/infra', 'Bump Terraform AWS provider', { author: 'sam', mergedAt: ago(8 * DAY), approvedAt: ago(9 * DAY) }),
+      cellar(422, 'acme/web', 'Remove legacy cookie banner', { author: 'omar', state: 'CLOSED', approvedAt: ago(15 * DAY) }),
+    ],
     compostCount: 1,
     compostUrl: 'https://github.com/pulls?q=is%3Apr+author%3A%40me+is%3Aclosed+is%3Aunmerged',
     fetchedAt: new Date(now).toISOString(),

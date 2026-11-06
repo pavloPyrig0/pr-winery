@@ -185,7 +185,7 @@ function renderUi() {
     const where = area ? `You are in the ${AREA_LABEL[area]} area.` : 'You are on the path between the two areas.';
     canvas?.setAttribute(
       'aria-label',
-      `PR Garden: an isometric garden with two fenced areas, My PRs (${game.countFor('mine')} beds) and To review (${game.countFor('review')} beds), one flower bed per pull request. ${where} ${summaries.map((x) => x.text).join('. ')}. Use W A S D to walk, E to tend the highlighted bed, 1 or 2 to jump to an area, or press L for a list of links.`,
+      `PR Winery: an isometric winery with two fenced vineyards, My PRs (${game.countFor('mine')} vines) and To review (${game.countFor('review')} vines), one vine bed per open pull request. Your merged PRs are barrels in the My PRs cellar and PRs you approved are bottles in the To review cellar. ${where} ${summaries.map((x) => x.text).join('. ')}. Use W A S D to walk, E to open the highlighted item, 1 or 2 to jump to an area, or press L for a list of links.`,
     );
   });
 }

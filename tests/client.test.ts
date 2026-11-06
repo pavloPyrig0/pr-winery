@@ -103,6 +103,17 @@ describe('graphql errors', () => {
   });
 });
 
+const cellarPr = (p: Record<string, unknown>) => ({
+  title: 't',
+  url: 'u',
+  number: 1,
+  state: 'MERGED',
+  mergedAt: null,
+  author: { login: 'other' },
+  repository: { nameWithOwner: 'o/r' },
+  ...p,
+});
+
 describe('fetchGarden', () => {
   it('merges requested and reviewed-by-me PRs without duplicates', async () => {
     const body = {
@@ -112,7 +123,13 @@ describe('fetchGarden', () => {
         mine: { nodes: [rawPr({ id: 'MINE' })] },
         requested: { nodes: [rawPr({ id: 'A' }), null] },
         reviewed: { nodes: [rawPr({ id: 'A' }), rawPr({ id: 'B' })] },
-        harvest: { issueCount: 3 },
+        barrels: { nodes: [cellarPr({ id: 'M1', mergedAt: '2026-11-01T10:00:00Z' }), null] },
+        approved: {
+          nodes: [
+            cellarPr({ id: 'OK', viewerLatestReview: { state: 'APPROVED', submittedAt: '2026-11-02T10:00:00Z' } }),
+            cellarPr({ id: 'NO', viewerLatestReview: { state: 'CHANGES_REQUESTED', submittedAt: '2026-11-02T10:00:00Z' } }),
+          ],
+        },
         compost: { issueCount: 1 },
       },
     };
@@ -122,8 +139,10 @@ describe('fetchGarden', () => {
       ['A', true],
       ['B', false],
     ]);
-    expect(g.harvestCount).toBe(3);
-    expect(g.harvestUrl).toContain('merged%3A%3E%3D');
+    expect(g.barrels.map((b) => [b.id, b.mergedAt])).toEqual([['M1', '2026-11-01T10:00:00Z']]);
+    expect(g.barrelsUrl).toContain('merged%3A%3E%3D');
+    // Only PRs whose latest review from me is an approval become bottles.
+    expect(g.bottles.map((b) => [b.id, b.approvedAt])).toEqual([['OK', '2026-11-02T10:00:00Z']]);
   });
 });
 

@@ -51,13 +51,31 @@ export interface StaleBranch {
   lastCommitAt: string;
 }
 
+/** A PR kept in the cellar: my merged PRs (barrels) or PRs I approved (bottles). */
+export interface CellarPr {
+  id: string;
+  title: string;
+  url: string;
+  number: number;
+  repo: string;
+  author: string | null;
+  state: 'OPEN' | 'MERGED' | 'CLOSED';
+  /** When it merged, if it did. */
+  mergedAt: string | null;
+  /** When I approved it (bottles only). */
+  approvedAt: string | null;
+}
+
 export interface GardenData {
   viewer: string;
   mine: PullRequest[];
   review: PullRequest[];
   weeds: StaleBranch[];
-  harvestCount: number;
-  harvestUrl: string;
+  /** My PRs merged in the last 30 days: one barrel each. */
+  barrels: CellarPr[];
+  barrelsUrl: string;
+  /** PRs by others that I approved (open, or merged/closed in the last 30 days): one bottle each. */
+  bottles: CellarPr[];
   compostCount: number;
   compostUrl: string;
   fetchedAt: string;
@@ -98,8 +116,17 @@ export interface WeedItem {
   reason: string;
 }
 
-export interface BasketItem {
-  kind: 'basket' | 'compost';
+/** A barrel (my merged PR) or a bottle (a PR I approved) stored in the cellar. */
+export interface CellarItem {
+  kind: 'barrel' | 'bottle';
+  id: string;
+  pr: CellarPr;
+  urgency: number;
+  reason: string;
+}
+
+export interface CompostItem {
+  kind: 'compost';
   id: string;
   url: string;
   count: number;
@@ -107,4 +134,4 @@ export interface BasketItem {
   reason: string;
 }
 
-export type GardenItem = BedItem | WeedItem | BasketItem;
+export type GardenItem = BedItem | WeedItem | CellarItem | CompostItem;

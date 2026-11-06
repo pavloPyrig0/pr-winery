@@ -188,19 +188,71 @@ export function drawArch(label: string, pal: SeasonPalette): Container {
   return c;
 }
 
-export function drawBasket(count: number): Container {
+/** Oak wine barrel lying on a small cradle; `seed` varies the wood tone. */
+export function drawBarrel(seed: string): Container {
   const c = new Container();
   const g = new Graphics();
-  shadow(g, 20, 8);
-  g.ellipse(0, -14, 17, 7).fill(0x8a5a2b);
-  // Produce peeking out.
-  const fruit = [0xe0524f, 0xf2a93b, 0x7cc65a, 0xe0524f, 0xf7d046, 0xa77bd6];
-  const n = Math.min(fruit.length, Math.max(1, count));
-  for (let i = 0; i < n; i++) g.circle(-10 + i * 4, -16 - (i % 2) * 3, 4.5).fill(fruit[i]);
-  g.poly([-17, -14, 17, -14, 13, 0, -13, 0]).fill(0xb07a3f);
-  for (let i = 0; i < 4; i++) g.moveTo(-16 + i, -10 + i * 3).lineTo(16 - i, -10 + i * 3).stroke({ width: 1, color: 0x8a5a2b });
-  for (let i = -3; i <= 3; i++) g.moveTo(i * 4.5, -14).lineTo(i * 3.8, 0).stroke({ width: 0.8, color: 0x8a5a2b, alpha: 0.7 });
-  g.moveTo(-14, -15).quadraticCurveTo(0, -38, 14, -15).stroke({ width: 2.5, color: 0x8a5a2b });
+  const rng = rngFor(seed);
+  const wood = mixColor(0x9a6236, 0x7a4a26, range(rng, 0, 1));
+  const dark = mixColor(wood, 0x000000, 0.3);
+  const light = mixColor(wood, 0xffffff, 0.18);
+  shadow(g, 22, 8);
+  // Cradle.
+  for (const x of [-12, 12]) g.poly([x - 4, 0, x + 4, 0, x + 3, -6, x - 3, -6]).fill(C.woodDark);
+  // Body, lying along the screen: a bulging cylinder seen from the side.
+  g.moveTo(-17, -24).quadraticCurveTo(0, -30, 17, -24).lineTo(17, -6).quadraticCurveTo(0, 0, -17, -6).closePath().fill(wood);
+  g.moveTo(-17, -24).quadraticCurveTo(0, -30, 17, -24).lineTo(17, -19).quadraticCurveTo(0, -25, -17, -19).closePath().fill(light);
+  // Staves.
+  for (let i = -2; i <= 2; i++) {
+    g.moveTo(i * 6.5, -27 + Math.abs(i) * 0.6).lineTo(i * 6.5, -3 - Math.abs(i) * 0.6).stroke({ width: 0.8, color: dark, alpha: 0.6 });
+  }
+  // Iron hoops.
+  for (const x of [-12, -5, 5, 12]) {
+    g.moveTo(x, -27 + Math.abs(x) * 0.12).lineTo(x, -3 - Math.abs(x) * 0.12).stroke({ width: 2, color: 0x3a3a3a });
+  }
+  // Front head (end of the barrel) with a wine stain by the bung.
+  g.ellipse(17, -15, 4.5, 9.5).fill(dark);
+  g.ellipse(17.5, -15, 3.2, 8).fill(mixColor(wood, 0x000000, 0.15));
+  g.circle(0, -27, 1.6).fill(0x3a2414);
+  g.ellipse(1, -24, 1.4, 2.4).fill({ color: 0x6b1730, alpha: 0.7 });
+  c.addChild(g);
+  return c;
+}
+
+/**
+ * Wine bottle on a little wooden crate. Open PRs are corked; merged ones get
+ * a wax seal, closed-unmerged ones a grey capsule.
+ */
+export function drawBottle(seed: string, state: 'OPEN' | 'MERGED' | 'CLOSED'): Container {
+  const c = new Container();
+  const g = new Graphics();
+  const rng = rngFor(seed);
+  shadow(g, 16, 6);
+  // Crate.
+  g.poly([-13, -8, 0, -2, 0, 4, -13, -2]).fill(C.woodDark);
+  g.poly([0, -2, 13, -8, 13, -2, 0, 4]).fill(C.wood);
+  g.poly([-13, -8, 0, -14, 13, -8, 0, -2]).fill(C.woodLight);
+  g.moveTo(-13, -5).lineTo(0, 1).lineTo(13, -5).stroke({ width: 0.8, color: 0x5e3d24, alpha: 0.6 });
+  // Bottle.
+  const glass = [0x2f4a2a, 0x3a2a3a, 0x24392e][Math.floor(rng() * 3)];
+  const by = -8;
+  g.roundRect(-5.5, by - 26, 11, 26, 4).fill(glass);
+  g.moveTo(-5.5, by - 22).quadraticCurveTo(-5, by - 30, -2, by - 32).lineTo(2, by - 32).quadraticCurveTo(5, by - 30, 5.5, by - 22).fill(glass);
+  g.rect(-2, by - 42, 4, 11).fill(glass);
+  g.roundRect(-4, by - 24, 2, 18, 1).fill({ color: 0xffffff, alpha: 0.18 }); // glint
+  // Label.
+  const label = [0xf3ead8, 0xe9dcc0, 0xf6efe3][Math.floor(rng() * 3)];
+  g.roundRect(-5.5, by - 18, 11, 10, 1.5).fill(label);
+  g.rect(-3.5, by - 15, 7, 1.2).fill(0x6b1730);
+  g.rect(-3, by - 12, 6, 0.9).fill({ color: 0x5a4a3a, alpha: 0.7 });
+  // Top.
+  if (state === 'OPEN') {
+    g.roundRect(-1.8, by - 46, 3.6, 5, 1).fill(0xc9a26b); // cork
+  } else {
+    const cap = state === 'MERGED' ? 0x8e1b3a : 0x8a8a8a;
+    g.roundRect(-2.6, by - 44, 5.2, 7, 1.2).fill(cap);
+    if (state === 'MERGED') g.circle(0, by - 37, 2.6).fill(mixColor(cap, 0x000000, 0.15));
+  }
   c.addChild(g);
   return c;
 }

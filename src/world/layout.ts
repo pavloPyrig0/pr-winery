@@ -1,7 +1,7 @@
 // Deterministic placement of garden items into a tile map.
-import type { BedItem, GardenId, GardenItem, WeedItem } from '../types';
+import type { BedItem, CellarItem, GardenId, GardenItem, WeedItem } from '../types';
 import { stateRank } from '../github/mapping';
-import { BLOCKED_TILES, buildTemplate, parseTile, type Tile } from './template';
+import { BLOCKED_TILES, buildTemplate, cellarBlocksFor, parseTile, type Tile } from './template';
 
 export const BASE_SLOTS = 14;
 export const SLOTS_PER_BLOCK = 4;
@@ -13,7 +13,7 @@ export interface Placed {
   y: number;
   w: number;
   h: number;
-  /** Blocks movement (beds, basket, compost). Weeds do not. */
+  /** Blocks movement (beds, barrels, bottles, compost). Weeds do not. */
   solid: boolean;
   /** Which garden area the object belongs to. */
   garden: GardenId;
@@ -127,7 +127,9 @@ export function extraBlocksFor(bedCount: number): number {
 
 export function layoutGarden(items: GardenItem[], garden: GardenId): World {
   const beds = orderBeds(items.filter((i): i is BedItem => i.kind === 'bed'));
-  const rows = buildTemplate(extraBlocksFor(beds.length));
+  // Barrels and bottles keep the order they came in (newest first).
+  const cellar = items.filter((i): i is CellarItem => i.kind === 'barrel' || i.kind === 'bottle');
+  const rows = buildTemplate(extraBlocksFor(beds.length), cellarBlocksFor(cellar.length));
   const height = rows.length;
   const width = rows[0].length;
   const tiles: Tile[] = [];
@@ -146,11 +148,19 @@ export function layoutGarden(items: GardenItem[], garden: GardenId): World {
     for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) tiles[(s.y + dy) * width + s.x + dx] = 'grass';
   }
 
-  // Basket and compost sit at their template markers near the arch.
+  // Compost sits at its template marker near the arch.
   for (let i = 0; i < tiles.length; i++) {
-    const t = tiles[i];
-    if (t !== 'basket' && t !== 'compost') continue;
-    const item = items.find((it) => it.kind === t);
+    if (tiles[i] !== 'compost') continue;
+    const item = items.find((it) => it.kind === 'compost');
+    if (item) placed.push({ item, x: i % width, y: Math.floor(i / width), w: 1, h: 1, solid: true, garden });
+    else tiles[i] = 'grass';
+  }
+
+  // Cellar slots fill row by row from the back; unused ones become grass.
+  let ci = 0;
+  for (let i = 0; i < tiles.length; i++) {
+    if (tiles[i] !== 'cellar') continue;
+    const item = cellar[ci++];
     if (item) placed.push({ item, x: i % width, y: Math.floor(i / width), w: 1, h: 1, solid: true, garden });
     else tiles[i] = 'grass';
   }
