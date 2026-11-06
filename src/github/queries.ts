@@ -70,7 +70,7 @@ query Garden($mine: String!, $requested: String!, $reviewed: String!, $barrels: 
     nodes { ...CellarFields }
   }
   approved: search(query: $approved, type: ISSUE, first: 50) {
-    nodes { ...CellarFields viewerLatestReview { state submittedAt } }
+    nodes { ...CellarFields ... on PullRequest { viewerLatestReview { state submittedAt } } }
   }
   compost: search(query: $compost, type: ISSUE, first: 1) { issueCount }
 }
